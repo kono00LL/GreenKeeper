@@ -1,4 +1,4 @@
-import type { AuthResponse, AuthTokens, User, UserResponse } from '@/types/auth';
+import type { AuthResponse, AuthTokens, Gender, User, UserResponse } from '@/types/auth';
 import { apiClient, refreshClient, withoutAuthRefresh } from '@/services/http';
 
 export async function register(
@@ -27,6 +27,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
 
 export async function getCurrentUser(skipAuthRefresh = false): Promise<User> {
   const response = await apiClient.get<UserResponse>('/user/userinfo', skipAuthRefresh ? withoutAuthRefresh() : undefined);
+  return response.data.user;
+}
+
+export async function updateCurrentUser(updates: { user_name?: string; gender?: Gender }): Promise<User> {
+  const response = await apiClient.put<UserResponse>('/user/userinfo', updates);
   return response.data.user;
 }
 
