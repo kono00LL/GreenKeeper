@@ -2,7 +2,6 @@ import { DefaultTheme, Slot, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
-import '../global.css';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
