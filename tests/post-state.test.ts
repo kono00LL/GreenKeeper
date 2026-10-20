@@ -6,6 +6,7 @@ const post = (id = 'a', collected = false): Post => ({
   excerpt: '摘要',
   content: '正文',
   coverImage: null,
+  category: 'article',
   images: [],
   createdAt: '2026-01-01',
   collected,

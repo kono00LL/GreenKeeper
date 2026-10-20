@@ -1,4 +1,4 @@
-import { postApi } from '@/services/post-api';
+import { getCollections, postApi } from '@/services/post-api';
 import { apiClient, refreshClient } from '@/services/http';
 import { useAuthStore } from '@/store/auth-store';
 jest.mock('@/services/http', () => ({
@@ -24,4 +24,10 @@ test('does not downgrade a still-authenticated failure to guest data', async () 
   (apiClient.get as jest.Mock).mockRejectedValueOnce({ response: { status: 401 } });
   await expect(postApi.detail('a')).rejects.toBeTruthy();
   expect(refreshClient.get).not.toHaveBeenCalled();
+});
+
+test('loads the authenticated collection list with its selected category', async () => {
+  (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: { items: [] } });
+  expect(await getCollections('article')).toEqual([]);
+  expect(apiClient.get).toHaveBeenCalledWith('/me/collections', { params: { category: 'article' } });
 });

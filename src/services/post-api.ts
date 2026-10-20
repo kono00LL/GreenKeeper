@@ -2,7 +2,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { apiClient, refreshClient } from '@/services/http';
 import { statusOf } from '@/services/post-errors';
 import { useAuthStore } from '@/store/auth-store';
-import type { Post, PostApi, PostPage, CollectionResult } from '@/types/post';
+import type { CollectionCategory, Post, PostApi, PostPage, CollectionResult } from '@/types/post';
 
 async function publicGet<T>(path: string, config?: AxiosRequestConfig): Promise<T> {
   try {
@@ -25,3 +25,10 @@ export const postApi: PostApi = {
       })
     ).data,
 };
+
+export async function getCollections(category: CollectionCategory): Promise<Post[]> {
+  const response = await apiClient.get<{ items: Post[] }>('/me/collections', {
+    params: { category },
+  });
+  return response.data.items;
+}

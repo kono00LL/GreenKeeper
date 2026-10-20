@@ -49,7 +49,13 @@ function ImageContent({ image, height, label, fit = 'cover', onSize }: Props) {
               setStatus('ready');
               onSize?.(event.source.width, event.source.height);
             }}
-            onError={() => setStatus('error')}
+            onError={(event) => {
+              console.error('[PostImage] 图片加载失败', {
+                url: image.url,
+                error: event.error,
+              });
+              setStatus('error');
+            }}
           />
           {status === 'loading' && (
             <ActivityIndicator pointerEvents="none" color={colors.selectedText} />

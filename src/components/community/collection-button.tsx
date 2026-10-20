@@ -46,8 +46,8 @@ export function CollectionButton({ postId, returnTo }: { postId: string; returnT
             style={styles.icon}
           />
         )}
-        <CommunityText style={[styles.label, post.collected && styles.selected]}>
-          {label} {post.collectionCount}
+        <CommunityText style={[styles.count, post.collected && styles.selected]}>
+          {post.collectionCount}
         </CommunityText>
       </Pressable>
       {operation?.error && (
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   icon: { width: 23, height: 23 },
-  label: { color: colors.secondaryText, fontSize: 13 },
+  count: { color: colors.secondaryText, fontSize: 13, minWidth: 12, textAlign: 'center' },
   selected: { color: colors.selectedText },
   error: { color: colors.danger, fontSize: 12, paddingHorizontal: 4, paddingBottom: 6 },
 });

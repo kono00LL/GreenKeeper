@@ -4,6 +4,7 @@ import { CommunityScreen } from '@/components/community/community-screen';
 import { PostDetailScreen } from '@/components/community/post-detail-screen';
 import { PostGallery } from '@/components/community/post-gallery';
 import { PostImageView } from '@/components/community/post-image';
+import { CommunityHeader } from '@/components/community/community-header';
 import { postStore } from '@/store/post-store';
 import { postApi } from '@/services/post-api';
 import { useAuthStore } from '@/store/auth-store';
@@ -24,6 +25,7 @@ const post: Post = {
   content: '第一段\n第二段',
   images: [],
   coverImage: null,
+  category: 'article',
   createdAt: '2026-01-01',
   collected: false,
   collectionCount: 2,
@@ -118,4 +120,23 @@ test('gallery opens selected image, changes index and keeps it after closing', a
   fireEvent.press(screen.getByRole('button', { name: '上一张' }));
   fireEvent.press(screen.getByRole('button', { name: '关闭大图' }));
   expect(screen.getByText('1 / 2')).toBeTruthy();
+});
+
+test('top feature actions open separate full-screen routes', () => {
+  render(<CommunityHeader height={120} />);
+  fireEvent.press(screen.getByRole('button', { name: '每日问答' }));
+  fireEvent.press(screen.getByRole('button', { name: '绿植托管' }));
+  fireEvent.press(screen.getByRole('button', { name: '上门服务' }));
+  expect(router.push).toHaveBeenNthCalledWith(1, {
+    pathname: '/community/[feature]',
+    params: { feature: 'daily' },
+  });
+  expect(router.push).toHaveBeenNthCalledWith(2, {
+    pathname: '/community/[feature]',
+    params: { feature: 'plants' },
+  });
+  expect(router.push).toHaveBeenNthCalledWith(3, {
+    pathname: '/community/[feature]',
+    params: { feature: 'ranking' },
+  });
 });

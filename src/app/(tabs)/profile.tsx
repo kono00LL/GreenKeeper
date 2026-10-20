@@ -40,6 +40,13 @@ export default function ProfilePage() {
           </View>
           <Text style={styles.chevron}>›</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push(authenticated ? '/collections' : '/auth')}
+          style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
+          <Text style={styles.menuLabel}>我的收藏</Text>
+          <Text style={styles.menuChevron}>›</Text>
+        </Pressable>
         {!authenticated && <Text style={styles.hint}>点击头像或账户信息，使用邮箱注册或登录</Text>}
       </View>
     </SafeAreaView>
@@ -77,4 +84,18 @@ const styles = StyleSheet.create({
     width: 24,
   },
   hint: { color: colors.muted, fontSize: 14, lineHeight: 21, marginTop: 18 },
+  menuRow: {
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderColor: '#e1ebe5',
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    minHeight: 56,
+    paddingHorizontal: 16,
+  },
+  menuLabel: { color: colors.text, fontSize: 16 },
+  menuChevron: { color: colors.muted, fontSize: 26, lineHeight: 30 },
 });
