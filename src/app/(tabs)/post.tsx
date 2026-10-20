@@ -1,5 +1,2 @@
-import { PlaceholderPage } from '@/components/placeholder-page';
-
-export default function PostPage() {
-  return <PlaceholderPage title="社区" route="/post" />;
-}
+import { CommunityScreen } from '@/components/community/community-screen';
+export default CommunityScreen;

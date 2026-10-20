@@ -17,3 +17,18 @@ pnpm run dev:android
 ```bash
 BACKEND_PORT=9090 pnpm run dev:android
 ```
+
+## 社区浏览与收藏
+
+社区已接入相邻后端的 `/posts` 与幂等收藏接口。游客可以浏览列表、详情及大图；收藏会引导登录并返回原页面。顶部功能区预留 15%，底部导航保持原样。
+
+```bash
+pnpm test
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm exec expo export --platform web
+```
+
+接口地址由 `EXPO_PUBLIC_API_BASE_URL` 指定，默认 `http://localhost:8080`。Web 联调时，后端 `CORS_ORIGINS` 必须包含前端 Origin（默认允许本机 8081 端口）。后端测试使用 `npm test`，不会写入开发数据库。
+
+详细实现说明见 [社区实现说明](docs/社区/实现说明.md)，接口契约见相邻后端的 `docs/核心/API.md`。

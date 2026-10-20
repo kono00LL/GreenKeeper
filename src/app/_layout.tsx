@@ -1,4 +1,5 @@
-import { DefaultTheme, Slot, ThemeProvider } from 'expo-router';
+import { CommunityFontProvider } from '@/components/community/community-text';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
@@ -24,7 +25,9 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={DefaultTheme}>
-      <Slot />
+      <CommunityFontProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </CommunityFontProvider>
     </ThemeProvider>
   );
 }

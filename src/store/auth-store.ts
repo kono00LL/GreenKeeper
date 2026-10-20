@@ -9,6 +9,7 @@ import {
 import type { AuthStatus, User } from '@/types/auth';
 
 type AuthState = {
+  sessionVersion: number;
   status: AuthStatus;
   hydrated: boolean;
   user: User | null;
@@ -32,6 +33,7 @@ const hydrationReady = new Promise<void>((resolve) => {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
+      sessionVersion: 0,
       status: 'checking',
       hydrated: false,
       user: null,
@@ -45,16 +47,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setSession: (user, accessToken, refreshToken) => {
-        set({ status: 'authenticated', user, accessToken, refreshToken });
+        set({ status: 'authenticated', user, accessToken, refreshToken, sessionVersion: get().sessionVersion + 1 });
       },
 
       updateUser: (user) => set({ user }),
 
       clearSession: () => {
-        set({ status: 'unauthenticated', user: null, accessToken: null, refreshToken: null });
+        set({ status: 'unauthenticated', user: null, accessToken: null, refreshToken: null, sessionVersion: get().sessionVersion + 1 });
       },
 
       refreshSession: async () => {
+        const version = get().sessionVersion;
         const currentRefreshToken = get().refreshToken;
         if (!currentRefreshToken) {
           get().clearSession();
@@ -63,18 +66,21 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           const tokens = await refreshSessionRequest(currentRefreshToken);
+          if (get().sessionVersion !== version) return false;
           set({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
 
           try {
             const user = await getCurrentUser(true);
+            if (get().sessionVersion !== version) return false;
             set({ status: 'authenticated', user });
           } catch {
+            if (get().sessionVersion !== version) return false;
             // A valid session can survive a temporary profile/network failure.
             set({ status: 'authenticated' });
           }
           return true;
         } catch {
-          get().clearSession();
+          if (get().sessionVersion === version) get().clearSession();
           return false;
         }
       },
@@ -95,11 +101,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
+        const version = get().sessionVersion;
         const token = get().refreshToken || get().accessToken;
         try {
           if (token) await logoutRequest(token);
         } finally {
-          get().clearSession();
+          if (get().sessionVersion === version) get().clearSession();
         }
       },
     }),

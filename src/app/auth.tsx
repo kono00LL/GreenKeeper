@@ -1,5 +1,6 @@
 import { isAxiosError } from 'axios';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { communityReturnTarget } from '@/navigation/community-return';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -14,6 +15,13 @@ function getErrorMessage(error: unknown) {
 }
 
 export default function AuthPage() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTarget = communityReturnTarget(returnTo);
+  const leave = () => {
+    if (returnTarget) router.dismissTo(returnTarget);
+    else if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/profile');
+  };
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [userName, setUserName] = useState('');
@@ -45,7 +53,8 @@ export default function AuthPage() {
         ? await login(email.trim().toLowerCase(), password)
         : await register(email.trim().toLowerCase(), password, userName.trim() || undefined);
       setSession(response.user, response.access_token, response.refresh_token);
-      router.replace('/(tabs)');
+      if (returnTarget) router.dismissTo(returnTarget);
+      else router.replace('/(tabs)');
     } catch (requestError) {
       setError(getErrorMessage(requestError));
     } finally { setSubmitting(false); }
@@ -57,7 +66,7 @@ export default function AuthPage() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <Text style={styles.brand}>GreenKeeper</Text>
-            <Pressable accessibilityRole="button" hitSlop={12} onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)/profile'))}><Text style={styles.skip}>跳过</Text></Pressable>
+            <Pressable accessibilityRole="button" hitSlop={12} onPress={leave}><Text style={styles.skip}>跳过</Text></Pressable>
           </View>
           <View style={styles.intro}>
             <Text style={styles.title}>{mode === 'login' ? '欢迎回来' : '创建账户'}</Text>
@@ -76,7 +85,7 @@ export default function AuthPage() {
             {mode === 'register' && <><Text style={styles.label}>确认密码</Text><TextInput autoCapitalize="none" onChangeText={setConfirmPassword} placeholder="再次输入密码" placeholderTextColor="#9aa3a0" secureTextEntry style={styles.input} value={confirmPassword} /></>}
           </View>
           {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          <Pressable accessibilityRole="button" disabled={submitting} onPress={handleSubmit} style={({ pressed }) => [styles.submit, pressed && styles.submitPressed, submitting && styles.submitDisabled]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={mode === 'login' ? '登录' : '注册'} disabled={submitting} onPress={handleSubmit} style={({ pressed }) => [styles.submit, pressed && styles.submitPressed, submitting && styles.submitDisabled]}>
             {submitting ? <ActivityIndicator color="#ffffff" /> : <Text style={styles.submitText}>{mode === 'login' ? '登录' : '注册'}</Text>}
           </Pressable>
         </ScrollView>

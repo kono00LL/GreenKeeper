@@ -10,6 +10,7 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8
 
 type AuthRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
+  sessionVersion?: number;
   skipAuthRefresh?: boolean;
 };
 
@@ -28,7 +29,8 @@ export const refreshClient = create({
 let refreshPromise: Promise<boolean> | null = null;
 
 apiClient.interceptors.request.use((config) => {
-  const accessToken = useAuthStore.getState().accessToken;
+  const { accessToken, sessionVersion } = useAuthStore.getState();
+  (config as AuthRequestConfig).sessionVersion = sessionVersion;
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
@@ -36,9 +38,15 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if ((response.config as AuthRequestConfig).sessionVersion !== useAuthStore.getState().sessionVersion) {
+      return Promise.reject(new Error('Session changed'));
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const config = error.config as AuthRequestConfig | undefined;
+    if (config && config.sessionVersion !== useAuthStore.getState().sessionVersion) return Promise.reject(error);
     const shouldRefresh =
       error.response?.status === 401 &&
       Boolean(config) &&
@@ -58,7 +66,7 @@ apiClient.interceptors.response.use(
     }
 
     const refreshed = await refreshPromise;
-    if (!refreshed) {
+    if (!refreshed || config.sessionVersion !== useAuthStore.getState().sessionVersion) {
       return Promise.reject(error);
     }
 
