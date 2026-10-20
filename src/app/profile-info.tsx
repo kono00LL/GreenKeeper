@@ -1,8 +1,9 @@
 import { isAxiosError } from 'axios';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { colors } from '@/constants/color';
 import { getCurrentUser, updateCurrentUser } from '@/services/auth-api';
 import { useAuthStore } from '@/store/auth-store';
 import type { Gender } from '@/types/auth';
@@ -94,28 +95,54 @@ export default function ProfileInfoPage() {
   if (status === 'checking' || !user) return null;
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-      <View style={styles.header}>
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1" style={{ backgroundColor: colors.background }}>
+      <View
+        className="h-14 flex-row items-center justify-between border-b px-5"
+        style={{ borderBottomColor: colors.divider }}>
         <Pressable accessibilityRole="button" hitSlop={12} onPress={() => router.back()}>
-          <Text style={styles.back}>‹</Text>
+          <Text className="text-[38px] font-light leading-10" style={{ color: colors.text }}>
+            ‹
+          </Text>
         </Pressable>
-        <Text style={styles.title}>个人信息</Text>
-        <View style={styles.headerSpace} />
+        <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+          个人信息
+        </Text>
+        <View className="w-7" />
       </View>
 
-      <View style={styles.list}>
-        <Pressable accessibilityRole="button" onPress={openNameEditor} style={styles.row}>
-          <Text style={styles.label}>昵称</Text>
-          <View style={styles.valueWrap}>
-            <Text style={styles.value}>{user.user_name}</Text>
-            <Text style={styles.arrow}>›</Text>
+      <View className="mt-4" style={{ backgroundColor: colors.white }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={openNameEditor}
+          className="min-h-[58px] flex-row items-center justify-between border-b px-5"
+          style={{ borderBottomColor: colors.divider }}>
+          <Text className="text-base" style={{ color: colors.text }}>
+            昵称
+          </Text>
+          <View className="flex-row items-center">
+            <Text className="mr-3 text-base" style={{ color: colors.muted }}>
+              {user.user_name}
+            </Text>
+            <Text className="text-[25px] font-light leading-7" style={{ color: colors.muted }}>
+              ›
+            </Text>
           </View>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={openGenderEditor} style={styles.row}>
-          <Text style={styles.label}>性别</Text>
-          <View style={styles.valueWrap}>
-            <Text style={styles.value}>{genderLabels[user.gender]}</Text>
-            <Text style={styles.arrow}>›</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={openGenderEditor}
+          className="min-h-[58px] flex-row items-center justify-between border-b px-5"
+          style={{ borderBottomColor: colors.divider }}>
+          <Text className="text-base" style={{ color: colors.text }}>
+            性别
+          </Text>
+          <View className="flex-row items-center">
+            <Text className="mr-3 text-base" style={{ color: colors.muted }}>
+              {genderLabels[user.gender]}
+            </Text>
+            <Text className="text-[25px] font-light leading-7" style={{ color: colors.muted }}>
+              ›
+            </Text>
           </View>
         </Pressable>
       </View>
@@ -125,12 +152,16 @@ export default function ProfileInfoPage() {
         transparent
         visible={editor !== null}
         onRequestClose={() => !saving && setEditor(null)}>
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editor === 'name' ? '修改昵称' : '选择性别'}</Text>
+        <View className="flex-1 justify-end" style={{ backgroundColor: colors.overlay }}>
+          <View className="rounded-t-[18px] p-5 pb-8" style={{ backgroundColor: colors.white }}>
+            <View className="mb-5 flex-row items-center justify-between">
+              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+                {editor === 'name' ? '修改昵称' : '选择性别'}
+              </Text>
               <Pressable onPress={() => !saving && setEditor(null)}>
-                <Text style={styles.cancel}>取消</Text>
+                <Text className="text-[15px]" style={{ color: colors.muted }}>
+                  取消
+                </Text>
               </Pressable>
             </View>
             {editor === 'name' ? (
@@ -139,68 +170,57 @@ export default function ProfileInfoPage() {
                 maxLength={10}
                 onChangeText={setDraftName}
                 placeholder="请输入昵称"
-                placeholderTextColor="#99999b"
-                style={styles.modalInput}
+                placeholderTextColor={colors.muted}
+                className="h-[50px] rounded-[10px] border px-3.5 text-base"
+                style={{ borderColor: colors.inputBorder, color: colors.text }}
                 value={draftName}
               />
             ) : (
-              <View style={styles.genderOptions}>
+              <View className="flex-row gap-2">
                 {(Object.keys(genderLabels) as Gender[]).map((gender) => (
                   <Pressable
                     key={gender}
                     onPress={() => setDraftGender(gender)}
-                    style={[styles.genderOption, draftGender === gender && styles.genderOptionSelected]}>
-                    <Text style={[styles.genderText, draftGender === gender && styles.genderTextSelected]}>
+                    className="flex-1 items-center rounded-[10px] border py-[13px]"
+                    style={{
+                      backgroundColor: draftGender === gender ? colors.selectedBackground : colors.white,
+                      borderColor: draftGender === gender ? colors.primary : colors.inputBorder,
+                    }}>
+                    <Text
+                      className="text-base"
+                      style={{ color: draftGender === gender ? colors.selectedText : colors.secondaryText }}>
                       {genderLabels[gender]}
                     </Text>
                   </Pressable>
                 ))}
               </View>
             )}
-            {error && <Text style={styles.error}>{error}</Text>}
+            {error && (
+              <Text className="mt-3.5 text-sm" style={{ color: colors.danger }}>
+                {error}
+              </Text>
+            )}
             <Pressable
               disabled={saving}
               onPress={save}
-              style={[styles.saveButton, saving && styles.disabled]}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>保存</Text>}
+              className="mt-5 h-[50px] items-center justify-center rounded-[10px]"
+              style={{ backgroundColor: colors.primary, opacity: saving ? 0.6 : 1 }}>
+              {saving ? (
+                <ActivityIndicator color={colors.white} />
+              ) : (
+                <Text className="text-base font-semibold" style={{ color: colors.white }}>
+                  保存
+                </Text>
+              )}
             </Pressable>
           </View>
         </View>
       </Modal>
-      <Pressable accessibilityRole="button" onPress={handleLogout} style={styles.logoutButton}>
-        <Text style={styles.logoutText}>退出登录</Text>
+      <Pressable accessibilityRole="button" onPress={handleLogout} className="mt-9 items-center py-3">
+        <Text className="text-[15px] font-semibold" style={{ color: colors.danger }}>
+          退出登录
+        </Text>
       </Pressable>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: { backgroundColor: '#f8f8f8', flex: 1 },
-  header: { alignItems: 'center', borderBottomColor: '#f1f1f1', borderBottomWidth: 1, flexDirection: 'row', height: 56, justifyContent: 'space-between', paddingHorizontal: 20 },
-  back: { color: '#222222', fontSize: 38, fontWeight: '300', lineHeight: 40 },
-  title: { color: '#111111', fontSize: 18, fontWeight: '600' },
-  headerSpace: { width: 28 },
-  list: { backgroundColor: '#ffffff', marginTop: 16 },
-  row: { alignItems: 'center', borderBottomColor: '#f1f1f1', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 20 },
-  label: { color: '#111111', fontSize: 16 },
-  valueWrap: { alignItems: 'center', flexDirection: 'row' },
-  value: { color: '#99999b', fontSize: 16, marginRight: 12 },
-  arrow: { color: '#99999b', fontSize: 25, fontWeight: '300', lineHeight: 28 },
-  modalBackdrop: { backgroundColor: 'rgba(0,0,0,0.35)', flex: 1, justifyContent: 'flex-end' },
-  modalCard: { backgroundColor: '#ffffff', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, paddingBottom: 32 },
-  modalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  modalTitle: { color: '#111111', fontSize: 18, fontWeight: '600' },
-  cancel: { color: '#99999b', fontSize: 15 },
-  modalInput: { borderColor: '#d7dfda', borderRadius: 10, borderWidth: 1, color: '#111111', fontSize: 16, height: 50, paddingHorizontal: 14 },
-  genderOptions: { flexDirection: 'row', gap: 8 },
-  genderOption: { alignItems: 'center', borderColor: '#d7dfda', borderRadius: 10, borderWidth: 1, flex: 1, paddingVertical: 13 },
-  genderOptionSelected: { backgroundColor: '#e7f7f0', borderColor: '#68dbbb' },
-  genderText: { color: '#666666', fontSize: 16 },
-  genderTextSelected: { color: '#268e65', fontWeight: '600' },
-  error: { color: '#c04444', fontSize: 14, marginTop: 12 },
-  saveButton: { alignItems: 'center', backgroundColor: '#68dbbb', borderRadius: 10, height: 50, justifyContent: 'center', marginTop: 20 },
-  disabled: { opacity: 0.6 },
-  saveText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
-  logoutButton: { alignItems: 'center', marginTop: 36, paddingVertical: 12 },
-  logoutText: { color: '#ee395d', fontSize: 15, fontWeight: '600' },
-});

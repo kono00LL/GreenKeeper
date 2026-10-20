@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { Tabs } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACTIVE_COLOR = '#68dbbb';
 const INACTIVE_COLOR = '#99999b';
@@ -45,13 +46,15 @@ function TransparentTabButton(props: any) {
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarItemStyle: styles.tabBarItem,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { height: 64 + insets.bottom, paddingBottom: insets.bottom }],
       }}>
       {tabs.map((tab) => (
         <Tabs.Screen
@@ -82,7 +85,7 @@ const styles = StyleSheet.create({
   },
   tabBarItem: {
     alignItems: 'center',
-    height: '100%',
+    height: 60,
     justifyContent: 'center',
     width: '20%',
   },
