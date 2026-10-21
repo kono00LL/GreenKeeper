@@ -17,6 +17,18 @@ jest.mock('@/store/auth-store', () => ({
   useAuthStore: (selector: (s: unknown) => unknown) => selector({ setSession: jest.fn() }),
 }));
 beforeEach(() => jest.clearAllMocks());
+test('camera login returns to capture while skipping returns home', async () => {
+  (useLocalSearchParams as jest.Mock).mockReturnValue({ returnTo: '/camera' });
+  (login as jest.Mock).mockResolvedValue({ user: {}, access_token: 'a', refresh_token: 'r' });
+  render(<AuthPage />);
+  fireEvent.press(screen.getByText('跳过'));
+  expect(router.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  jest.clearAllMocks();
+  fireEvent.changeText(screen.getByPlaceholderText('name@example.com'), 'user@example.com');
+  fireEvent.changeText(screen.getByPlaceholderText('至少 8 个字符'), 'password123');
+  fireEvent.press(screen.getByRole('button', { name: '登录' }));
+  await waitFor(() => expect(router.dismissTo).toHaveBeenCalledWith({ pathname: '/(tabs)/camera' }));
+});
 test('login returns to the original detail without automatically collecting', async () => {
   (useLocalSearchParams as jest.Mock).mockReturnValue({ returnTo: '/posts/a' });
   (login as jest.Mock).mockResolvedValue({

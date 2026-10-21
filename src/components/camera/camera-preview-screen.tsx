@@ -1,13 +1,50 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
+import { imageUploadErrorMessage, uploadImage, type UploadedImage } from '@/services/image-upload';
+import { useEffect, useRef, useState } from 'react';
 
 export function CameraPreviewScreen() {
   const { uri } = useLocalSearchParams<{ uri?: string | string[] }>();
   const imageUri = Array.isArray(uri) ? uri[0] : uri;
+  return <ImagePreview key={imageUri} imageUri={imageUri} />;
+}
+
+function ImagePreview({ imageUri }: { imageUri?: string }) {
+  const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [imageAttempt, setImageAttempt] = useState(0);
+  const request = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    request.current?.abort();
+  }, []);
+
+  const submitUpload = async () => {
+    if (!imageUri || request.current) return;
+    const controller = new AbortController();
+    request.current = controller;
+    setUploading(true);
+    setMessage(null);
+    try {
+      const result = await uploadImage(imageUri, controller.signal);
+      if (!controller.signal.aborted) {
+        setUploadedImage(result);
+        setImageFailed(false);
+        setMessage('上传成功');
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) setMessage(imageUploadErrorMessage(error));
+    } finally {
+      request.current = null;
+      if (!controller.signal.aborted) setUploading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -20,15 +57,36 @@ export function CameraPreviewScreen() {
       </View>
       <View style={styles.content}>
         {imageUri ? (
-          <Image accessibilityLabel="已选择的图片" contentFit="contain" source={{ uri: imageUri }} style={styles.image} />
+          <Image
+            key={`${uploadedImage?.key ?? imageUri}-${imageAttempt}`}
+            accessibilityLabel={uploadedImage ? '已上传的图片' : '已选择的图片'}
+            contentFit="contain"
+            source={{ uri: uploadedImage?.url ?? imageUri }}
+            style={styles.image}
+            onError={() => {
+              setImageFailed(true);
+              setMessage(uploadedImage ? '图片已上传，服务器图片加载失败' : '本地图片加载失败，请重新选择');
+            }}
+          />
         ) : (
           <CommunityText style={styles.empty}>没有可预览的图片</CommunityText>
         )}
-        <CommunityText style={styles.caption}>本地图片预览</CommunityText>
+        <CommunityText style={styles.caption}>{uploadedImage ? '服务器图片预览' : '本地图片预览'}</CommunityText>
+        {message ? <CommunityText accessibilityRole="alert" style={styles.message}>{message}</CommunityText> : null}
+        {imageFailed && uploadedImage ? (
+          <Pressable accessibilityRole="button" accessibilityLabel="重新加载图片" style={styles.secondaryAction} onPress={() => {
+            setImageFailed(false);
+            setMessage('上传成功');
+            setImageAttempt((attempt) => attempt + 1);
+          }}><CommunityText style={styles.secondaryText}>重新加载图片</CommunityText></Pressable>
+        ) : null}
       </View>
       <View style={styles.footer}>
-        <Pressable accessibilityRole="button" accessibilityLabel="重新选择" onPress={() => router.replace('/(tabs)/camera')} style={styles.reselect}>
-          <CommunityText bold style={styles.reselectText}>重新选择</CommunityText>
+        <Pressable accessibilityRole="button" accessibilityLabel="重新选择" onPress={() => router.replace('/(tabs)/camera')} style={styles.secondaryAction}>
+          <CommunityText style={styles.secondaryText}>重新选择</CommunityText>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="上传图片" disabled={!imageUri || uploading} onPress={() => void submitUpload()} style={[styles.reselect, (!imageUri || uploading) && styles.disabled]}>
+          {uploading ? <ActivityIndicator color={colors.text} /> : <CommunityText bold style={styles.reselectText}>{uploadedImage ? '再次上传' : '上传图片'}</CommunityText>}
         </Pressable>
       </View>
     </SafeAreaView>
@@ -42,10 +100,14 @@ const styles = StyleSheet.create({
   actionText: { color: colors.selectedText, fontSize: 16 },
   title: { color: colors.text, fontSize: 17 },
   content: { flex: 1, padding: 16, alignItems: 'center', justifyContent: 'center' },
-  image: { width: '100%', height: '88%' },
+  image: { width: '100%', flex: 1 },
   empty: { color: colors.muted },
   caption: { color: colors.secondaryText, fontSize: 14, marginTop: 12 },
   footer: { paddingHorizontal: 20, paddingVertical: 12, borderTopWidth: 1, borderColor: colors.divider },
+  secondaryAction: { height: 44, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: colors.selectedText, fontSize: 14 },
   reselect: { height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 4, backgroundColor: colors.primary },
+  disabled: { opacity: 0.55 },
   reselectText: { color: colors.text, fontSize: 16 },
+  message: { color: colors.secondaryText, fontSize: 14, marginTop: 8 },
 });

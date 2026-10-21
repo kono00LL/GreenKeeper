@@ -1,6 +1,6 @@
 import { isAxiosError } from 'axios';
 import { router, useLocalSearchParams } from 'expo-router';
-import { communityReturnTarget } from '@/navigation/community-return';
+import { authReturnTarget } from '@/navigation/auth-return';
 import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,9 +16,10 @@ function getErrorMessage(error: unknown) {
 
 export default function AuthPage() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const returnTarget = communityReturnTarget(returnTo);
+  const returnTarget = authReturnTarget(returnTo);
   const leave = () => {
-    if (returnTarget) router.dismissTo(returnTarget);
+    if (returnTo === '/camera') router.dismissTo('/(tabs)');
+    else if (returnTarget) router.dismissTo(returnTarget);
     else if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/profile');
   };

@@ -4,6 +4,12 @@ import { router } from 'expo-router';
 import { CameraCaptureScreen } from '@/components/camera/camera-capture-screen';
 import { CameraPreviewScreen } from '@/components/camera/camera-preview-screen';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadImage } from '@/services/image-upload';
+
+jest.mock('@/services/image-upload', () => ({
+  ...jest.requireActual('@/services/image-upload'),
+  uploadImage: jest.fn(),
+}));
 
 let mockInitialCameraPermission: { granted: boolean } | null = { granted: true };
 let mockCameraPermissionResult = { granted: true };
@@ -136,4 +142,52 @@ test('shows the selected local image and provides return and reselect actions', 
   expect(router.back).toHaveBeenCalledTimes(1);
   fireEvent.press(screen.getByRole('button', { name: '重新选择' }));
   expect(router.replace).toHaveBeenCalledWith('/(tabs)/camera');
+});
+
+test('upload stays pending without duplicate requests, then shows the server image', async () => {
+  let finish!: (value: unknown) => void;
+  (uploadImage as jest.Mock).mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  expect(uploadImage).toHaveBeenCalledTimes(1);
+  finish({ url: 'http://localhost:8080/uploads/saved.jpg' });
+  expect(await screen.findByText('上传成功')).toBeTruthy();
+  expect(screen.getByLabelText('已上传的图片').props.source).toEqual([{ uri: 'http://localhost:8080/uploads/saved.jpg' }]);
+});
+
+test('upload failure keeps the original image and supports a manual retry', async () => {
+  (uploadImage as jest.Mock).mockRejectedValueOnce({ isAxiosError: true, response: { status: 413, data: { error: { code: 'IMAGE_TOO_LARGE' } } } });
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  expect(await screen.findByText('图片不能超过 10 MiB，请重新选择图片')).toBeTruthy();
+  expect(screen.getByLabelText('已选择的图片')).toBeTruthy();
+  (uploadImage as jest.Mock).mockResolvedValueOnce({ url: 'http://localhost:8080/uploads/saved.jpg' });
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  expect(await screen.findByText('上传成功')).toBeTruthy();
+});
+
+test('failure to load the saved server image offers a display retry without uploading again', async () => {
+  (uploadImage as jest.Mock).mockResolvedValueOnce({ url: 'http://localhost:8080/uploads/saved.jpg' });
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  const image = await screen.findByLabelText('已上传的图片');
+  fireEvent(image, 'error', { nativeEvent: { error: 'offline' } });
+  expect(await screen.findByText('图片已上传，服务器图片加载失败')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: '重新加载图片' }));
+  expect(uploadImage).toHaveBeenCalledTimes(1);
+});
+
+test('leaving the preview cancels the pending upload and avoids state updates', async () => {
+  let finish!: (value: unknown) => void;
+  let signal!: AbortSignal;
+  (uploadImage as jest.Mock).mockImplementation((_uri, requestSignal) => {
+    signal = requestSignal;
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  const view = render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  view.unmount();
+  expect(signal.aborted).toBe(true);
+  finish({ url: 'http://localhost:8080/uploads/saved.jpg' });
 });
