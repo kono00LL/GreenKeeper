@@ -64,6 +64,7 @@ export default function TabsLayout() {
             title: tab.title,
             tabBarButton: (props) => <TransparentTabButton {...props} />,
             tabBarIcon: ({ focused }) => <TabIcon focused={focused} title={tab.title} />,
+            ...(tab.name === 'camera' ? { tabBarStyle: { display: 'none' as const } } : {}),
           }}
         />
       ))}
