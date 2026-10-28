@@ -1,5 +1,13 @@
 # GreenKeeper
 
+## 主页植物资料库
+
+主页展示植物分类，默认显示前四类，点击“显示全部”可展开八类。分类进入植物列表，再进入详情；数据由相邻后端 SQLite 提供，前端不复制植物名单。未核对身份、缺少简介或养护资料时显示明确提示；图片为灰色占位，添加到我的植物暂未开放。
+
+本地预览：先在相邻后端执行 `npm start`，再在本项目执行 `npm run web -- --port 8081`，打开 `http://localhost:8081`。真机联调时，将 `EXPO_PUBLIC_API_BASE_URL` 设置为可访问的后端地址（USB Android 可使用下方调试脚本）。
+
+植物读取接口为 `GET /plants/categories`、`GET /plants?category=:slug` 和 `GET /plants/:id`，均无需登录；完整响应结构见相邻后端 `openapi.yaml`。
+
 ## USB Android 调试
 
 确保 Android 设备已连接并开启 USB 调试，在前端项目目录执行：
@@ -7,6 +15,8 @@
 ```bash
 pnpm run dev:android
 ```
+
+调试信息位置：后端请求和异常会显示在运行 `npm run dev` 的后端终端；Expo/React Native 的 `console.log`、红屏和构建错误会显示在运行 Expo 的终端以及 Metro 浏览器界面。Web 调试可直接打开浏览器开发者工具的 Console 和 Network 面板。Android 真机可在另一个终端执行 `adb logcat | rg "ReactNativeJS|AndroidRuntime|GreenKeeper"` 查看原生错误。
 
 该命令会依次启动后端开发服务、等待 `http://127.0.0.1:8080/health` 可访问、执行
 `adb reverse tcp:8080 tcp:8080`，然后启动 Android 前端。退出前端进程时，脚本会自动停止后端。

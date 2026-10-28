@@ -1,5 +1,5 @@
-import { PlaceholderPage } from '@/components/placeholder-page';
+import { PlantHomeScreen } from '@/components/plants/plant-home-screen';
 
 export default function HomePage() {
-  return <PlaceholderPage title="主页" route="/" />;
+  return <PlantHomeScreen />;
 }
