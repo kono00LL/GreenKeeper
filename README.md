@@ -1,1 +1,60 @@
 # GreenKeeper
+
+## 主页植物资料库
+
+主页展示植物分类，默认显示前四类，点击“显示全部”可展开八类。分类进入植物列表，再进入详情；数据由相邻后端 SQLite 提供，前端不复制植物名单。未核对身份、缺少简介或养护资料时显示明确提示；图片为灰色占位，添加到我的植物暂未开放。
+
+本地预览：先在相邻后端执行 `npm start`，再在本项目执行 `npm run web -- --port 8081`，打开 `http://localhost:8081`。真机联调时，将 `EXPO_PUBLIC_API_BASE_URL` 设置为可访问的后端地址（USB Android 可使用下方调试脚本）。
+
+植物读取接口为 `GET /plants/categories`、`GET /plants?category=:slug` 和 `GET /plants/:id`，均无需登录；完整响应结构见相邻后端 `openapi.yaml`。
+
+## USB Android 调试
+
+确保 Android 设备已连接并开启 USB 调试，在前端项目目录执行：
+
+```bash
+pnpm run dev:android
+```
+
+调试信息位置：后端请求和异常会显示在运行 `npm run dev` 的后端终端；Expo/React Native 的 `console.log`、红屏和构建错误会显示在运行 Expo 的终端以及 Metro 浏览器界面。Web 调试可直接打开浏览器开发者工具的 Console 和 Network 面板。Android 真机可在另一个终端执行 `adb logcat | rg "ReactNativeJS|AndroidRuntime|GreenKeeper"` 查看原生错误。
+
+该命令会依次启动后端开发服务、等待 `http://127.0.0.1:8080/health` 可访问、执行
+`adb reverse tcp:8080 tcp:8080`，然后启动 Android 前端。退出前端进程时，脚本会自动停止后端。
+
+后端目录默认位于前端目录的同级目录 `../GreenKeeper-backend`。如果端口不是 `8080`，可以设置
+`BACKEND_PORT`，例如：
+
+```bash
+BACKEND_PORT=9090 pnpm run dev:android
+```
+
+## 社区浏览与收藏
+
+社区已接入相邻后端的 `/posts` 与幂等收藏接口。游客可以浏览列表、详情及大图；收藏会引导登录并返回原页面。顶部功能区预留 15%，底部导航保持原样。
+
+```bash
+pnpm test
+pnpm exec tsc --noEmit
+pnpm lint
+pnpm exec expo export --platform web
+```
+
+接口地址由 `EXPO_PUBLIC_API_BASE_URL` 指定，默认 `http://localhost:8080`。Web 联调时，后端 `CORS_ORIGINS` 必须包含前端 Origin（默认允许本机 8081 端口）。后端测试使用 `npm test`，不会写入开发数据库。
+
+详细实现说明见 [社区实现说明](docs/社区/实现说明.md)，接口契约见相邻后端的 `docs/核心/API.md`。
+
+## 拍摄图片上传
+
+登录后可从拍摄页拍照或选择单张图片，预览页会将其缩放至长边不超过 1600px、压为 JPEG 后上传至后端本地存储。后端将文件放在 `DATA_DIRECTORY/uploads`，仅供本地开发验证，部署多实例前应迁移到共享对象存储。接口限制和响应格式见相邻后端的 `docs/核心/API.md`。
+
+## 拍照识别植物（Pl@ntNet）
+
+在相邻后端 `.env` 配置 `PLANTNET_API_KEY` 后重启 `npm run dev`，再启动前端。登录后拍照或从相册选图，在预览页点击「识别植物」，显示最多三个候选的学名、可用常见名和匹配分数。无匹配可重新拍照，错误可手动重试；离开预览或切换登录会话会取消请求并清空结果。识别不保存历史，原「上传图片」保留为次操作。
+
+前端只调用 GreenKeeper 的 `POST /plant-identifications`，不接触 Pl@ntNet 密钥。后端转发照片二进制，临时文件请求结束后清理，无需对象存储或公网图片链接。完整接口见相邻后端 `openapi.yaml`；配置、curl 示例与调试说明见 [PlantNet 接入与调试](docs/摄像与识别/PlantNet/接入与调试.md)。自动化测试使用模拟响应，不消耗识别额度。
+
+识别结果使用的官方 Logo 保存在 `assets/images/plantnet-logo.svg`，来源为 `https://my.plantnet.org/images/plantnet-logo-title.svg`；仅用于 Pl@ntNet 服务来源标识，商标归原权利人所有。
+
+### 识别结果与植物资料
+
+拍照预览中的识别候选可通过“查看植物资料”打开已核对且已发布的本地记录；未收录、整理中、名称有歧义时显示对应提示。从详情返回保留照片和识别结果。资料清单和安全导入说明见相邻后端项目的 `PLANT_CATALOG.md`。
