@@ -46,3 +46,11 @@ pnpm exec expo export --platform web
 ## 拍摄图片上传
 
 登录后可从拍摄页拍照或选择单张图片，预览页会将其缩放至长边不超过 1600px、压为 JPEG 后上传至后端本地存储。后端将文件放在 `DATA_DIRECTORY/uploads`，仅供本地开发验证，部署多实例前应迁移到共享对象存储。接口限制和响应格式见相邻后端的 `docs/核心/API.md`。
+
+## 拍照识别植物（Pl@ntNet）
+
+在相邻后端 `.env` 配置 `PLANTNET_API_KEY` 后重启 `npm run dev`，再启动前端。登录后拍照或从相册选图，在预览页点击「识别植物」，显示最多三个候选的学名、可用常见名和匹配分数。无匹配可重新拍照，错误可手动重试；离开预览或切换登录会话会取消请求并清空结果。识别不保存历史，原「上传图片」保留为次操作。
+
+前端只调用 GreenKeeper 的 `POST /plant-identifications`，不接触 Pl@ntNet 密钥。后端转发照片二进制，临时文件请求结束后清理，无需对象存储或公网图片链接。完整接口见相邻后端 `openapi.yaml`；配置、curl 示例与调试说明见 [PlantNet 接入与调试](docs/摄像与识别/PlantNet/接入与调试.md)。自动化测试使用模拟响应，不消耗识别额度。
+
+识别结果使用的官方 Logo 保存在 `assets/images/plantnet-logo.svg`，来源为 `https://my.plantnet.org/images/plantnet-logo-title.svg`；仅用于 Pl@ntNet 服务来源标识，商标归原权利人所有。

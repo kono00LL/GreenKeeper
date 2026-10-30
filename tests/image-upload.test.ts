@@ -2,6 +2,8 @@ import { Image, Platform } from 'react-native';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { apiClient } from '@/services/http';
 import { prepareImage, uploadImage } from '@/services/image-upload';
+import { identifyPlant, identificationErrorMessage } from '@/services/plant-identification-api';
+import { useAuthStore } from '@/store/auth-store';
 
 const mockResize = jest.fn();
 const mockSave = jest.fn(async () => ({ uri: 'file:///compressed.jpg', width: 1600, height: 800 }));
@@ -84,4 +86,45 @@ test('canceling during compression prevents the subsequent upload', async () => 
   controller.abort();
   await expect(uploadImage('file:///large.jpg', controller.signal)).rejects.toThrow('Upload canceled');
   expect(apiClient.post).not.toHaveBeenCalled();
+});
+
+test('identification submits a compressed JPEG with a longer timeout and forwards cancellation', async () => {
+  const data = { bestMatch: 'Ajuga genevensis L.', candidates: [] };
+  (apiClient.post as jest.Mock).mockResolvedValueOnce({ data });
+  const signal = new AbortController().signal;
+  expect(await identifyPlant('file:///large.jpg', signal)).toEqual(data);
+  const [url, body, config] = (apiClient.post as jest.Mock).mock.calls[0];
+  expect(url).toBe('/plant-identifications');
+  expect(body).toBeInstanceOf(FormData);
+  expect(config).toMatchObject({ headers: { 'Content-Type': undefined }, timeout: 40_000, signal });
+  expect(mockResize).toHaveBeenCalledWith({ width: 1600 });
+  expect(mockSave).toHaveBeenCalledWith({ format: SaveFormat.JPEG, compress: 0.8 });
+});
+
+test('canceling identification before submission prevents the API call', async () => {
+  const controller = new AbortController(); controller.abort();
+  await expect(identifyPlant('file:///large.jpg', controller.signal)).rejects.toThrow();
+  expect(apiClient.post).not.toHaveBeenCalled();
+});
+
+test('a login change during compression prevents identification', async () => {
+  mockSave.mockImplementationOnce(async () => {
+    useAuthStore.getState().clearSession();
+    return { uri: 'file:///compressed.jpg', width: 1600, height: 800 };
+  });
+  await expect(identifyPlant('file:///large.jpg')).rejects.toThrow('Session changed');
+  expect(apiClient.post).not.toHaveBeenCalled();
+});
+
+test.each([
+  [401, undefined, '登录已失效，请重新登录'],
+  [413, undefined, '图片不能超过 10 MiB，请重新选择图片'],
+  [415, undefined, '识别仅支持 JPEG、PNG 图片，请重新选择'],
+  [429, undefined, '识别额度已用完或请求过于频繁，请稍后再试'],
+  [503, 'IDENTIFICATION_NOT_CONFIGURED', '植物识别功能尚未配置'],
+  [503, 'IDENTIFICATION_CONFIGURATION_ERROR', '植物识别服务配置异常，请联系管理员'],
+  [504, undefined, '植物识别超时，请重试'],
+  [502, undefined, '植物识别服务暂不可用，请稍后重试'],
+])('maps identification error %s/%s to a readable message', (status, code, message) => {
+  expect(identificationErrorMessage({ isAxiosError: true, response: { status, data: { error: { code } } } })).toBe(message);
 });

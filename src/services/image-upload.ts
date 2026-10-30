@@ -35,7 +35,7 @@ export async function prepareImage(uri: string) {
   }
 }
 
-export async function uploadImage(uri: string, signal?: AbortSignal): Promise<UploadedImage> {
+export async function prepareImageForm(uri: string, signal?: AbortSignal): Promise<FormData> {
   const sessionVersion = useAuthStore.getState().sessionVersion;
   const prepared = await prepareImage(uri);
   if (signal?.aborted) throw new Error('Upload canceled');
@@ -52,6 +52,12 @@ export async function uploadImage(uri: string, signal?: AbortSignal): Promise<Up
     } as unknown as Blob);
   }
   if (sessionVersion !== useAuthStore.getState().sessionVersion) throw new Error('Session changed');
+  if (signal?.aborted) throw new Error('Upload canceled');
+  return formData;
+}
+
+export async function uploadImage(uri: string, signal?: AbortSignal): Promise<UploadedImage> {
+  const formData = await prepareImageForm(uri, signal);
   const response = await apiClient.post<{ image: UploadedImage }>('/images', formData, {
     headers: { 'Content-Type': undefined },
     timeout: 30_000,

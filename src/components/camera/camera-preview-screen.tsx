@@ -6,24 +6,52 @@ import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
 import { imageUploadErrorMessage, uploadImage, type UploadedImage } from '@/services/image-upload';
 import { useEffect, useRef, useState } from 'react';
+import { identifyPlant, identificationErrorMessage } from '@/services/plant-identification-api';
+import { useAuthStore } from '@/store/auth-store';
+import type { PlantIdentification } from '@/types/plant-identification';
+import { IdentificationResults } from './identification-results';
 
 export function CameraPreviewScreen() {
   const { uri } = useLocalSearchParams<{ uri?: string | string[] }>();
   const imageUri = Array.isArray(uri) ? uri[0] : uri;
-  return <ImagePreview key={imageUri} imageUri={imageUri} />;
+  const sessionVersion = useAuthStore((state) => state.sessionVersion);
+  return <ImagePreview key={`${imageUri}-${sessionVersion}`} imageUri={imageUri} />;
 }
 
 function ImagePreview({ imageUri }: { imageUri?: string }) {
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [identifying, setIdentifying] = useState(false);
+  const [identification, setIdentification] = useState<PlantIdentification | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [imageFailed, setImageFailed] = useState(false);
   const [imageAttempt, setImageAttempt] = useState(0);
   const request = useRef<AbortController | null>(null);
+  const busy = uploading || identifying;
 
   useEffect(() => () => {
     request.current?.abort();
   }, []);
+
+  const submitIdentification = async () => {
+    if (!imageUri || request.current) return;
+    const controller = new AbortController();
+    const version = useAuthStore.getState().sessionVersion;
+    request.current = controller;
+    setIdentifying(true);
+    setIdentification(null);
+    setMessage(null);
+    const isCurrent = () => !controller.signal.aborted && version === useAuthStore.getState().sessionVersion;
+    try {
+      const result = await identifyPlant(imageUri, controller.signal);
+      if (isCurrent()) setIdentification(result);
+    } catch (error) {
+      if (isCurrent()) setMessage(identificationErrorMessage(error));
+    } finally {
+      request.current = null;
+      if (isCurrent()) setIdentifying(false);
+    }
+  };
 
   const submitUpload = async () => {
     if (!imageUri || request.current) return;
@@ -73,6 +101,8 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
         )}
         <CommunityText style={styles.caption}>{uploadedImage ? '服务器图片预览' : '本地图片预览'}</CommunityText>
         {message ? <CommunityText accessibilityRole="alert" style={styles.message}>{message}</CommunityText> : null}
+        {identifying ? <CommunityText accessibilityRole="alert" style={styles.message}>正在识别植物…</CommunityText> : null}
+        {identification ? <IdentificationResults result={identification} /> : null}
         {imageFailed && uploadedImage ? (
           <Pressable accessibilityRole="button" accessibilityLabel="重新加载图片" style={styles.secondaryAction} onPress={() => {
             setImageFailed(false);
@@ -82,10 +112,13 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
         ) : null}
       </View>
       <View style={styles.footer}>
+        <Pressable accessibilityRole="button" accessibilityLabel="识别植物" disabled={!imageUri || busy} onPress={() => void submitIdentification()} style={[styles.reselect, (!imageUri || busy) && styles.disabled]}>
+          {identifying ? <ActivityIndicator color={colors.text} /> : <CommunityText bold style={styles.reselectText}>识别植物</CommunityText>}
+        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="重新选择" onPress={() => router.replace('/(tabs)/camera')} style={styles.secondaryAction}>
           <CommunityText style={styles.secondaryText}>重新选择</CommunityText>
         </Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="上传图片" disabled={!imageUri || uploading} onPress={() => void submitUpload()} style={[styles.reselect, (!imageUri || uploading) && styles.disabled]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="上传图片" disabled={!imageUri || busy} onPress={() => void submitUpload()} style={[styles.secondaryAction, (!imageUri || busy) && styles.disabled]}>
           {uploading ? <ActivityIndicator color={colors.text} /> : <CommunityText bold style={styles.reselectText}>{uploadedImage ? '再次上传' : '上传图片'}</CommunityText>}
         </Pressable>
       </View>

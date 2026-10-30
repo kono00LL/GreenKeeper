@@ -42,7 +42,7 @@ test('a response from a previous login is rejected before reaching consumers', a
   await expect(apiClient.get('/posts', { adapter })).rejects.toThrow('Session changed');
 });
 
-test('multipart upload keeps its file body, auth headers and timeout across token refresh', async () => {
+test.each([['/images', 30_000], ['/plant-identifications', 40_000]])('multipart %s keeps its file body, auth headers and timeout across token refresh', async (url, timeout) => {
   const state = {
     sessionVersion: 1, accessToken: 'expired', refreshToken: 'refresh',
     refreshSession: jest.fn(async () => { state.accessToken = 'fresh'; return true; }),
@@ -53,14 +53,14 @@ test('multipart upload keeps its file body, auth headers and timeout across toke
   const adapter = jest.fn(async (config: InternalAxiosRequestConfig) => {
     expect(config.data).toBe(data);
     expect(config.headers.getContentType()).not.toBe('application/json');
-    expect(config.timeout).toBe(30_000);
+    expect(config.timeout).toBe(timeout);
     if (config.headers.Authorization === 'Bearer expired') {
       throw new AxiosError('expired', 'ERR_BAD_REQUEST', config, undefined, { ...response(config), status: 401 });
     }
     expect(config.headers.Authorization).toBe('Bearer fresh');
     return response(config);
   });
-  await apiClient.post('/images', data, { headers: { 'Content-Type': undefined }, timeout: 30_000, adapter });
+  await apiClient.post(url, data, { headers: { 'Content-Type': undefined }, timeout, adapter });
   expect(adapter).toHaveBeenCalledTimes(2);
   expect(state.refreshSession).toHaveBeenCalledTimes(1);
 });

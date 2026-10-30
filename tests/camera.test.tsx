@@ -1,10 +1,17 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { router } from 'expo-router';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { CameraCaptureScreen } from '@/components/camera/camera-capture-screen';
 import { CameraPreviewScreen } from '@/components/camera/camera-preview-screen';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadImage } from '@/services/image-upload';
+import { identifyPlant } from '@/services/plant-identification-api';
+import { useAuthStore } from '@/store/auth-store';
+
+jest.mock('@/services/plant-identification-api', () => ({
+  ...jest.requireActual('@/services/plant-identification-api'),
+  identifyPlant: jest.fn(),
+}));
 
 jest.mock('@/services/image-upload', () => ({
   ...jest.requireActual('@/services/image-upload'),
@@ -56,6 +63,7 @@ jest.mock('expo-image-picker', () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
+  (useLocalSearchParams as jest.Mock).mockReturnValue({ uri: 'file:///plant.jpg' });
   mockInitialCameraPermission = { granted: true };
   mockCameraPermissionResult = { granted: true };
   mockPickResult = { canceled: true };
@@ -190,4 +198,108 @@ test('leaving the preview cancels the pending upload and avoids state updates', 
   view.unmount();
   expect(signal.aborted).toBe(true);
   finish({ url: 'http://localhost:8080/uploads/saved.jpg' });
+});
+
+const identification = { bestMatch: 'Ajuga genevensis L.', candidates: [
+  { scientificName: 'Ajuga genevensis L.', commonNames: ['筋骨草'], score: 0.91 },
+  { scientificName: 'Ajuga orientalis L.', commonNames: [], score: 0.04 },
+] };
+
+test('identification shows ordered candidates with common names, scientific names and matching scores', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce(identification);
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('筋骨草')).toBeTruthy();
+  expect(screen.getByText('Ajuga genevensis L.')).toBeTruthy();
+  expect(screen.getByText('Ajuga orientalis L.')).toBeTruthy();
+  expect(screen.getByText('匹配分数 0.910')).toBeTruthy();
+  expect(screen.getByRole('link', { name: '识别由 Pl@ntNet 提供' })).toBeTruthy();
+  expect(screen.getByLabelText('Pl@ntNet Logo')).toBeTruthy();
+  expect(uploadImage).not.toHaveBeenCalled();
+});
+
+test('identification is single-flight and blocks upload until finished', async () => {
+  let finish!: (value: unknown) => void;
+  (identifyPlant as jest.Mock).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  expect(screen.getByText('正在识别植物…')).toBeTruthy();
+  expect(identifyPlant).toHaveBeenCalledTimes(1);
+  expect(uploadImage).not.toHaveBeenCalled();
+  await act(async () => finish(identification));
+});
+
+test('upload also blocks identification', async () => {
+  let finish!: (value: unknown) => void;
+  (uploadImage as jest.Mock).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(identifyPlant).not.toHaveBeenCalled();
+  await act(async () => finish({ url: 'http://localhost:8080/uploads/saved.jpg' }));
+});
+
+test('an empty identification offers a new photograph without hiding the selected photo', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce({ bestMatch: null, candidates: [] });
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('未找到匹配植物，请换个角度重新拍摄')).toBeTruthy();
+  expect(screen.getByLabelText('已选择的图片')).toBeTruthy();
+});
+
+test('an identification error allows manual retry without automatically consuming another request', async () => {
+  (identifyPlant as jest.Mock).mockRejectedValueOnce({ isAxiosError: true, response: { status: 429 } });
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('识别额度已用完或请求过于频繁，请稍后再试')).toBeTruthy();
+  expect(identifyPlant).toHaveBeenCalledTimes(1);
+  (identifyPlant as jest.Mock).mockResolvedValueOnce(identification);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('筋骨草')).toBeTruthy();
+});
+
+test('leaving the preview cancels identification', async () => {
+  let finish!: (value: unknown) => void;
+  let signal!: AbortSignal;
+  (identifyPlant as jest.Mock).mockImplementationOnce((_uri, requestSignal) => {
+    signal = requestSignal;
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  const view = render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  view.unmount();
+  expect(signal.aborted).toBe(true);
+  await act(async () => finish(identification));
+});
+
+test('a session change clears existing results and cancels pending identification', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce(identification);
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('筋骨草')).toBeTruthy();
+  act(() => useAuthStore.getState().clearSession());
+  expect(screen.queryByText('筋骨草')).toBeNull();
+  let finish!: (value: unknown) => void;
+  let signal!: AbortSignal;
+  (identifyPlant as jest.Mock).mockImplementationOnce((_uri, requestSignal) => {
+    signal = requestSignal;
+    return new Promise((resolve) => { finish = resolve; });
+  });
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  act(() => useAuthStore.getState().clearSession());
+  expect(signal.aborted).toBe(true);
+  await act(async () => finish(identification));
+  expect(screen.queryByText('筋骨草')).toBeNull();
+});
+
+test('selecting a different photo clears candidates', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce(identification);
+  const view = render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('筋骨草')).toBeTruthy();
+  (useLocalSearchParams as jest.Mock).mockReturnValue({ uri: 'file:///other.jpg' });
+  view.rerender(<CameraPreviewScreen />);
+  expect(screen.queryByText('筋骨草')).toBeNull();
 });
