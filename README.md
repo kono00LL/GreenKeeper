@@ -54,3 +54,7 @@ pnpm exec expo export --platform web
 前端只调用 GreenKeeper 的 `POST /plant-identifications`，不接触 Pl@ntNet 密钥。后端转发照片二进制，临时文件请求结束后清理，无需对象存储或公网图片链接。完整接口见相邻后端 `openapi.yaml`；配置、curl 示例与调试说明见 [PlantNet 接入与调试](docs/摄像与识别/PlantNet/接入与调试.md)。自动化测试使用模拟响应，不消耗识别额度。
 
 识别结果使用的官方 Logo 保存在 `assets/images/plantnet-logo.svg`，来源为 `https://my.plantnet.org/images/plantnet-logo-title.svg`；仅用于 Pl@ntNet 服务来源标识，商标归原权利人所有。
+
+### 识别结果与植物资料
+
+拍照预览中的识别候选可通过“查看植物资料”打开已核对且已发布的本地记录；未收录、整理中、名称有歧义时显示对应提示。从详情返回保留照片和识别结果。资料清单和安全导入说明见相邻后端项目的 `PLANT_CATALOG.md`。

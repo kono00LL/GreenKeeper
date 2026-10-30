@@ -42,7 +42,7 @@ export function PlantDetailScreen({ id }: { id: string }) {
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <Pressable
-        accessibilityRole="button" accessibilityLabel="返回植物列表"
+        accessibilityRole="button" accessibilityLabel="返回上一页"
         onPress={() => {
           if (router.canGoBack()) router.back();
           else if (plant?.categories[0]) router.replace({ pathname: '/plants/category/[slug]', params: { slug: plant.categories[0].slug } });

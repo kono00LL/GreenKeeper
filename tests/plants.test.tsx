@@ -95,7 +95,7 @@ test('distinguishes a missing plant from a network error and keeps a back button
   render(<PlantDetailScreen id="missing" />);
   expect(await screen.findByText('没有找到这项植物资料')).toBeTruthy();
   expect(screen.queryByRole('button', { name: '重试' })).toBeNull();
-  fireEvent.press(screen.getByRole('button', { name: '返回植物列表' }));
+  fireEvent.press(screen.getByRole('button', { name: '返回上一页' }));
   expect(router.replace).toHaveBeenCalledWith('/');
 });
 

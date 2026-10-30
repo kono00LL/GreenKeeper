@@ -303,3 +303,44 @@ test('selecting a different photo clears candidates', async () => {
   view.rerender(<CameraPreviewScreen />);
   expect(screen.queryByText('筋骨草')).toBeNull();
 });
+
+test('opens a matched local candidate by UUID and retains photo and results on return', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce({ bestMatch: 'Unlisted species L.', candidates: [
+    { scientificName: 'Unlisted species L.', commonNames: [], score: 0.8, localMatch: { status: 'unmatched', plant: null } },
+    { scientificName: 'Adiantum capillus-veneris L.', scientificNameWithoutAuthor: 'Adiantum capillus-veneris', commonNames: [], score: 0.15,
+      localMatch: { status: 'matched', plant: { id: 'fern-local-uuid', nameZh: '铁线蕨' } } },
+  ] });
+  const view = render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  const button = await screen.findByRole('button', { name: '查看植物资料：铁线蕨' });
+  expect(router.push).not.toHaveBeenCalled();
+  fireEvent.press(button);
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/plants/[id]', params: { id: 'fern-local-uuid' } });
+  view.rerender(<CameraPreviewScreen />);
+  expect(screen.getByText('Adiantum capillus-veneris L.')).toBeTruthy();
+  expect(screen.getByLabelText('已选择的图片')).toBeTruthy();
+  expect(identifyPlant).toHaveBeenCalledTimes(1);
+});
+
+test('unmatched, not ready and ambiguous candidates explain missing detail links', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce({ bestMatch: 'Plant one', candidates: [
+    { scientificName: 'Plant one', commonNames: [], score: 0.8, localMatch: { status: 'unmatched', plant: null } },
+    { scientificName: 'Plant two', commonNames: [], score: 0.1, localMatch: { status: 'not_ready', plant: null } },
+    { scientificName: 'Plant three', commonNames: [], score: 0.05, localMatch: { status: 'ambiguous', plant: null } },
+  ] });
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('植物资料暂未收录')).toBeTruthy();
+  expect(screen.getByText('植物资料整理中')).toBeTruthy();
+  expect(screen.getByText('名称对应关系待核对')).toBeTruthy();
+  expect(screen.queryAllByRole('button', { name: /查看植物资料/ })).toHaveLength(0);
+});
+
+test('old responses still show results without claiming a local match', async () => {
+  (identifyPlant as jest.Mock).mockResolvedValueOnce(identification);
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '识别植物' }));
+  expect(await screen.findByText('Ajuga genevensis L.')).toBeTruthy();
+  expect(screen.queryAllByRole('button', { name: /查看植物资料/ })).toHaveLength(0);
+  expect(screen.queryByText('植物资料暂未收录')).toBeNull();
+});
