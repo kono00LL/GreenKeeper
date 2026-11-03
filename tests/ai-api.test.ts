@@ -25,7 +25,7 @@ afterEach(() => {
   restoreDevMode();
 });
 
-test('logs only AI HTTP status and error code in development', async () => {
+test('preserves the API error for the shared HTTP diagnostics interceptor', async () => {
   const error = Object.assign(new Error('Request failed'), {
     isAxiosError: true,
     config: { headers: { Authorization: 'Bearer private-token-marker' } },
@@ -34,30 +34,10 @@ test('logs only AI HTTP status and error code in development', async () => {
   (apiClient.post as jest.Mock).mockRejectedValue(error);
 
   await expect(askPlantAdvice('private-plant-marker', 'private question marker')).rejects.toBe(error);
-
-  expect(console.error).toHaveBeenCalledWith('[ai-api] POST /ai/plant-advice failed', {
-    status: 503,
-    code: 'AI_NOT_CONFIGURED',
-  });
-  const logged = JSON.stringify(jest.mocked(console.error).mock.calls);
-  expect(logged).not.toContain('private-token-marker');
-  expect(logged).not.toContain('private-plant-marker');
-  expect(logged).not.toContain('private question marker');
+  expect(console.error).not.toHaveBeenCalled();
 });
 
-test('logs a missing HTTP response as a network diagnostic in development', async () => {
-  const error = Object.assign(new Error('Network Error'), { isAxiosError: true });
-  (apiClient.post as jest.Mock).mockRejectedValue(error);
-
-  await expect(askPlantAdvice('plant-id', '问题')).rejects.toBe(error);
-
-  expect(console.error).toHaveBeenCalledWith('[ai-api] POST /ai/plant-advice failed', {
-    status: null,
-    code: null,
-  });
-});
-
-test('does not emit AI request diagnostics in production', async () => {
+test('does not log at the service layer', async () => {
   setDevMode(false);
   (apiClient.post as jest.Mock).mockRejectedValue(Object.assign(new Error('Request failed'), { isAxiosError: true }));
 

@@ -8,6 +8,7 @@ import { imageUploadErrorMessage, uploadImage, type UploadedImage } from '@/serv
 import { useEffect, useRef, useState } from 'react';
 import { identifyPlant, identificationErrorMessage } from '@/services/plant-identification-api';
 import { useAuthStore } from '@/store/auth-store';
+import { diagnosticPath, logDiagnostic, logNonHttpDiagnostic } from '@/services/diagnostics';
 import type { PlantIdentification } from '@/types/plant-identification';
 import { IdentificationResults } from './identification-results';
 
@@ -46,7 +47,10 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
       const result = await identifyPlant(imageUri, controller.signal);
       if (isCurrent()) setIdentification(result);
     } catch (error) {
-      if (isCurrent()) setMessage(identificationErrorMessage(error));
+      if (isCurrent()) {
+        logNonHttpDiagnostic('[identification] image preparation failed', error);
+        setMessage(identificationErrorMessage(error));
+      }
     } finally {
       request.current = null;
       if (isCurrent()) setIdentifying(false);
@@ -67,7 +71,10 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
         setMessage('上传成功');
       }
     } catch (error) {
-      if (!controller.signal.aborted) setMessage(imageUploadErrorMessage(error));
+      if (!controller.signal.aborted) {
+        logNonHttpDiagnostic('[image] upload preparation failed', error);
+        setMessage(imageUploadErrorMessage(error));
+      }
     } finally {
       request.current = null;
       if (!controller.signal.aborted) setUploading(false);
@@ -91,7 +98,11 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
             contentFit="contain"
             source={{ uri: uploadedImage?.url ?? imageUri }}
             style={styles.image}
-            onError={() => {
+            onError={(event) => {
+              logDiagnostic('[image] preview load failed', new Error(event.error), {
+                source: uploadedImage ? 'server' : 'local',
+                path: uploadedImage ? diagnosticPath(uploadedImage.url) : null,
+              });
               setImageFailed(true);
               setMessage(uploadedImage ? '图片已上传，服务器图片加载失败' : '本地图片加载失败，请重新选择');
             }}

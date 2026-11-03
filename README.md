@@ -16,7 +16,7 @@
 pnpm run dev:android
 ```
 
-调试信息位置：后端请求和异常会显示在运行 `npm run dev` 的后端终端；Expo/React Native 的 `console.log`、红屏和构建错误会显示在运行 Expo 的终端以及 Metro 浏览器界面。Web 调试可直接打开浏览器开发者工具的 Console 和 Network 面板。Android 真机可在另一个终端执行 `adb logcat | rg "ReactNativeJS|AndroidRuntime|GreenKeeper"` 查看原生错误。
+调试信息位置：前端 API、拍摄、选图和图片加载诊断显示在 Expo/浏览器 Console；后端请求和异常显示在后端终端。每个 API 请求会带 `X-Request-ID`，前端与后端日志可以用相同 ID 对照。Web 也可查看浏览器开发者工具的 Network 面板；Android 真机可在另一个终端执行 `adb logcat | rg "ReactNativeJS|AndroidRuntime|GreenKeeper"` 查看原生错误。日志不会打印鉴权头、请求正文或完整响应。
 
 该命令会依次启动后端开发服务、等待 `http://127.0.0.1:8080/health` 可访问、执行
 `adb reverse tcp:8080 tcp:8080`，然后启动 Android 前端。退出前端进程时，脚本会自动停止后端。

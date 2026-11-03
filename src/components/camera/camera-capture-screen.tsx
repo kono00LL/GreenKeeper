@@ -6,6 +6,7 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from 'react-nat
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
+import { logDiagnostic } from '@/services/diagnostics';
 
 export function CameraCaptureScreen() {
   const cameraRef = useRef<CameraView>(null);
@@ -42,7 +43,8 @@ export function CameraCaptureScreen() {
         quality: 1,
       });
       if (!result.canceled && result.assets[0]?.uri) openPreview(result.assets[0].uri);
-    } catch {
+    } catch (error) {
+      logDiagnostic('[camera] gallery picker failed', error);
       setMessage('打开图库失败，请重试');
     } finally {
       setRequestingGallery(false);
@@ -54,8 +56,12 @@ export function CameraCaptureScreen() {
     try {
       const photo = await cameraRef.current?.takePictureAsync();
       if (photo?.uri) openPreview(photo.uri);
-      else setMessage('拍摄失败，请重试');
-    } catch {
+      else {
+        logDiagnostic('[camera] capture returned no photo', new Error('takePictureAsync returned no photo'));
+        setMessage('拍摄失败，请重试');
+      }
+    } catch (error) {
+      logDiagnostic('[camera] capture failed', error);
       setMessage('拍摄失败，请重试');
     }
   };

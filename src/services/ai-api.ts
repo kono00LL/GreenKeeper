@@ -4,18 +4,8 @@ import { apiClient } from '@/services/http';
 export type PlantAdviceResponse = { answer: string; model: string | null };
 
 export async function askPlantAdvice(plantId: string, question: string): Promise<PlantAdviceResponse> {
-  try {
-    const response = await apiClient.post<PlantAdviceResponse>('/ai/plant-advice', { plantId, question }, { timeout: 40_000 });
-    return response.data;
-  } catch (error) {
-    if (__DEV__ && isAxiosError(error)) {
-      console.error('[ai-api] POST /ai/plant-advice failed', {
-        status: error.response?.status ?? null,
-        code: error.response?.data?.error?.code ?? null,
-      });
-    }
-    throw error;
-  }
+  const response = await apiClient.post<PlantAdviceResponse>('/ai/plant-advice', { plantId, question }, { timeout: 40_000 });
+  return response.data;
 }
 
 export function plantAdviceErrorMessage(error: unknown) {

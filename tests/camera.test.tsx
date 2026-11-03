@@ -110,6 +110,19 @@ test('explains denied gallery access and does not open the picker', async () => 
   expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
 });
 
+test('logs gallery picker exceptions in development while keeping the user message concise', async () => {
+  const diagnostic = new Error('picker bridge failed');
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  mockLaunchImageLibrary.mockRejectedValueOnce(diagnostic);
+  render(<CameraCaptureScreen />);
+
+  fireEvent.press(screen.getByRole('button', { name: '图册' }));
+
+  expect(await screen.findByText('打开图库失败，请重试')).toBeTruthy();
+  expect(errorSpy).toHaveBeenCalledWith('[camera] gallery picker failed', expect.objectContaining({ message: 'picker bridge failed' }));
+  errorSpy.mockRestore();
+});
+
 test('opens the image preview after selecting one gallery image', async () => {
   mockPickResult = { canceled: false, assets: [{ uri: 'file:///selected.jpg' }] };
   render(<CameraCaptureScreen />);
@@ -175,7 +188,18 @@ test('upload failure keeps the original image and supports a manual retry', asyn
   expect(await screen.findByText('上传成功')).toBeTruthy();
 });
 
+test('logs image preparation failures while keeping the user-facing message concise', async () => {
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  (uploadImage as jest.Mock).mockRejectedValueOnce(new Error('image manipulator failed'));
+  render(<CameraPreviewScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
+  expect(await screen.findByText('图片处理或上传失败，请检查图片和网络后重试')).toBeTruthy();
+  expect(errorSpy).toHaveBeenCalledWith('[image] upload preparation failed', expect.objectContaining({ message: 'image manipulator failed' }));
+  errorSpy.mockRestore();
+});
+
 test('failure to load the saved server image offers a display retry without uploading again', async () => {
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   (uploadImage as jest.Mock).mockResolvedValueOnce({ url: 'http://localhost:8080/uploads/saved.jpg' });
   render(<CameraPreviewScreen />);
   fireEvent.press(screen.getByRole('button', { name: '上传图片' }));
@@ -184,6 +208,8 @@ test('failure to load the saved server image offers a display retry without uplo
   expect(await screen.findByText('图片已上传，服务器图片加载失败')).toBeTruthy();
   fireEvent.press(screen.getByRole('button', { name: '重新加载图片' }));
   expect(uploadImage).toHaveBeenCalledTimes(1);
+  expect(errorSpy).toHaveBeenCalledWith('[image] preview load failed', expect.objectContaining({ source: 'server', message: 'offline' }));
+  errorSpy.mockRestore();
 });
 
 test('leaving the preview cancels the pending upload and avoids state updates', async () => {

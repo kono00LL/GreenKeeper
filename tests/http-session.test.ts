@@ -42,6 +42,43 @@ test('a response from a previous login is rejected before reaching consumers', a
   await expect(apiClient.get('/posts', { adapter })).rejects.toThrow('Session changed');
 });
 
+test('adds a request id to API calls without exposing credentials in diagnostic logs', async () => {
+  const state = { sessionVersion: 1, accessToken: 'private-access-token', refreshToken: null };
+  (useAuthStore.getState as jest.Mock).mockImplementation(() => state);
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  const adapter = jest.fn(async (config: InternalAxiosRequestConfig) => {
+    expect(config.headers.get('X-Request-ID')).toMatch(/^[A-Za-z0-9-]{8,80}$/);
+    throw new AxiosError('Request failed', 'ERR_BAD_RESPONSE', config, undefined, {
+      ...response(config), status: 500,
+      headers: new AxiosHeaders({ 'X-Request-ID': config.headers.get('X-Request-ID') }),
+      data: { error: { code: 'INTERNAL_ERROR' }, secret: 'private-response-marker' },
+    });
+  });
+
+  await expect(apiClient.get('/private?query=private-query-marker', { adapter })).rejects.toThrow('Request failed');
+
+  const logged = JSON.stringify(errorSpy.mock.calls);
+  expect(logged).toContain('GET');
+  expect(logged).toContain('/private');
+  expect(logged).toContain('INTERNAL_ERROR');
+  expect(logged).not.toContain('private-access-token');
+  expect(logged).not.toContain('private-response-marker');
+  expect(logged).not.toContain('private-query-marker');
+});
+
+test('does not log intentionally canceled API requests', async () => {
+  (useAuthStore.getState as jest.Mock).mockReturnValue({ sessionVersion: 1, accessToken: null, refreshToken: null });
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  errorSpy.mockClear();
+  const adapter = async (config: InternalAxiosRequestConfig) => {
+    throw new AxiosError('canceled', 'ERR_CANCELED', config);
+  };
+
+  await expect(apiClient.get('/posts', { adapter })).rejects.toMatchObject({ code: 'ERR_CANCELED' });
+
+  expect(errorSpy).not.toHaveBeenCalled();
+});
+
 test.each([['/images', 30_000], ['/plant-identifications', 40_000]])('multipart %s keeps its file body, auth headers and timeout across token refresh', async (url, timeout) => {
   const state = {
     sessionVersion: 1, accessToken: 'expired', refreshToken: 'refresh',

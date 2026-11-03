@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import type { PostImage } from '@/types/post';
 import { colors } from '@/constants/color';
+import { diagnosticPath, logDiagnostic } from '@/services/diagnostics';
 import { CommunityText } from './community-text';
 
 type Props = {
@@ -50,9 +51,8 @@ function ImageContent({ image, height, label, fit = 'cover', onSize }: Props) {
               onSize?.(event.source.width, event.source.height);
             }}
             onError={(event) => {
-              console.error('[PostImage] 图片加载失败', {
-                url: image.url,
-                error: event.error,
+              logDiagnostic('[image] community image load failed', new Error(event.error), {
+                path: diagnosticPath(image.url),
               });
               setStatus('error');
             }}
