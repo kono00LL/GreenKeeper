@@ -55,6 +55,32 @@ pnpm exec expo export --platform web
 
 识别结果使用的官方 Logo 保存在 `assets/images/plantnet-logo.svg`，来源为 `https://my.plantnet.org/images/plantnet-logo-title.svg`；仅用于 Pl@ntNet 服务来源标识，商标归原权利人所有。
 
+## AI 植物养护助手（DeepSeek）
+
+植物详情页提供 AI 养护助手。登录后输入问题，前端调用后端 `POST /ai/plant-advice`，后端从本地资料库读取植物详情，再使用 OpenAI 兼容格式调用 DeepSeek，最后只把回答返回给前端。DeepSeek API Key 只配置在后端，不能放进 Expo 的 `EXPO_PUBLIC_*` 环境变量或打包产物。
+
+在相邻后端的 `.env` 配置：
+
+```bash
+DEEPSEEK_API_KEY=你的_API_KEY
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-flash
+DEEPSEEK_TIMEOUT_MS=30000
+```
+
+后端重启后，登录并打开植物详情即可使用。也可以直接调用业务接口：
+
+```bash
+curl http://localhost:8080/ai/plant-advice \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+  -d '{"plantId":"植物资料 UUID","question":"叶子发黄时应该先检查什么？"}'
+```
+
+DeepSeek 的调用原理是一次服务端代理：GreenKeeper 把植物资料和用户问题组装成 system/user messages，向 `https://api.deepseek.com/chat/completions` 发送 `model=deepseek-flash`、`stream=false` 的请求；DeepSeek 返回 `choices[0].message.content`，后端校验并返回 `{ answer, model }`。这种分层可以统一鉴权、隐藏密钥、限制输入长度，并在上游不可用时返回稳定的业务错误码。
+
+当前适合优先落地的功能是养护问答、基于资料的换盆/浇水步骤生成和社区文章摘要。植物病害诊断、直接根据照片生成结论、自动执行浇水等功能需要额外的视觉模型、数据校验和安全边界，建议在文字问答稳定后再逐步增加。
+
 ### 识别结果与植物资料
 
 拍照预览中的识别候选可通过“查看植物资料”打开已核对且已发布的本地记录；未收录、整理中、名称有歧义时显示对应提示。从详情返回保留照片和识别结果。资料清单和安全导入说明见相邻后端项目的 `PLANT_CATALOG.md`。

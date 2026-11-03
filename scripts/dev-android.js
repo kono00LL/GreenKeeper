@@ -10,6 +10,7 @@ const backendUrl = `http://127.0.0.1:${backendPort}/health`;
 
 let backendProcess;
 let frontendProcess;
+let logcatProcess;
 let shuttingDown = false;
 
 function commandFor(command, args, options = {}) {
@@ -65,6 +66,22 @@ async function main() {
     throw new Error('adb reverse failed. Check that an Android device is connected and USB debugging is enabled.');
   }
 
+  console.log('Starting filtered Android logs (ReactNativeJS, ReactNative, AndroidRuntime)...');
+  logcatProcess = commandFor('adb', [
+    'logcat',
+    '-v',
+    'time',
+    'ReactNativeJS:V',
+    'ReactNative:V',
+    'AndroidRuntime:E',
+    '*:S',
+  ]);
+  logcatProcess.on('close', (code, signal) => {
+    if (!shuttingDown) {
+      console.error(`[logcat] stopped unexpectedly (code ${code ?? 'null'}, signal ${signal || 'none'}).`);
+    }
+  });
+
   console.log('ADB reverse is ready. Starting Android app...');
   frontendProcess = commandFor('pnpm', ['run', 'android'], { cwd: frontendDirectory });
   frontendProcess.on('close', (code, signal) => shutdown(code === 0 ? 0 : 1, signal));
@@ -75,6 +92,7 @@ function shutdown(code = 0, signal) {
   shuttingDown = true;
 
   stopProcess(frontendProcess);
+  stopProcess(logcatProcess);
   stopProcess(backendProcess);
 
   if (signal) console.log(`Stopped by ${signal}.`);

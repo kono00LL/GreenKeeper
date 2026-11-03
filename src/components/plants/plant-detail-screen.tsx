@@ -8,6 +8,7 @@ import { plantApi } from '@/services/plant-api';
 import type { PlantDetail } from '@/types/plant';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { PlantLoadState } from './plant-load-state';
+import { PlantAdvice } from './plant-advice';
 
 const careLabels = [
   ['sunlightRequirement', '阳光'],
@@ -111,6 +112,8 @@ export function PlantDetailScreen({ id }: { id: string }) {
                     ))}
                   </View>
               </View>
+
+              <PlantAdvice plant={plant} />
             </View>
           </ScrollView>
           <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
