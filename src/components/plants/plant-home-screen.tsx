@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +8,7 @@ import { colors } from '@/constants/color';
 import { plantApi } from '@/services/plant-api';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { PlantLoadState } from './plant-load-state';
+import type { PlantCategory } from '@/types/plant';
 
 const INITIAL_CATEGORY_COUNT = 4;
 
@@ -15,6 +17,7 @@ export function PlantHomeScreen() {
   const { data, loading, error, reload } = usePlantResource('categories', plantApi.categories);
   const categories = data ?? [];
   const [expanded, setExpanded] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
 
   const visibleCategories = expanded ? categories : categories.slice(0, INITIAL_CATEGORY_COUNT);
 
@@ -49,9 +52,7 @@ export function PlantHomeScreen() {
                       <CommunityText numberOfLines={2} style={styles.categoryEnglish}>{category.nameEn}</CommunityText>
                       <CommunityText style={styles.count}>{category.plantCount} 种植物</CommunityText>
                     </View>
-                    <View accessibilityLabel="暂无图片" style={styles.preview}>
-                      <CommunityText style={styles.previewLabel}>暂无图片</CommunityText>
-                    </View>
+                    <CategoryImage key={category.coverImage?.url ?? 'empty'} category={category} />
                   </Pressable>
                 ))}
                 {visibleCategories.slice(index * 2, index * 2 + 2).length === 1 && <View style={styles.emptyCard} />}
@@ -69,11 +70,36 @@ export function PlantHomeScreen() {
                 <CommunityText style={styles.expandArrow}>{expanded ? '⌃' : '⌄'}</CommunityText>
               </Pressable>
             )}
+            {categories.some((category) => category.coverImage) && (
+              <View style={styles.credits}>
+                <Pressable accessibilityRole="button" accessibilityLabel="图片署名与许可" accessibilityState={{ expanded: showCredits }} onPress={() => setShowCredits((value) => !value)} style={styles.creditToggle}>
+                  <CommunityText style={styles.creditText}>图片署名与许可 {showCredits ? '⌃' : '⌄'}</CommunityText>
+                </Pressable>
+                {showCredits && categories.filter((category) => category.coverImage).map((category) => (
+                  <View key={category.id} style={styles.creditRow}>
+                    <CommunityText bold style={styles.creditText}>{category.nameZh}</CommunityText>
+                    <CommunityText style={styles.creditText}>{category.coverImage?.attribution}</CommunityText>
+                    <CommunityText style={styles.creditText}>{category.coverImage?.license}</CommunityText>
+                    {category.coverPlantId && <Pressable accessibilityRole="link" accessibilityLabel={`查看${category.nameZh}图片来源与许可`} onPress={() => router.push({ pathname: '/plants/[id]', params: { id: category.coverPlantId! } })} style={styles.creditToggle}>
+                      <CommunityText style={styles.creditLink}>来源与许可详情 ↗</CommunityText>
+                    </Pressable>}
+                  </View>
+                ))}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function CategoryImage({ category }: { category: PlantCategory }) {
+  const [failed, setFailed] = useState(false);
+  if (!category.coverImage || failed) {
+    return <View accessibilityLabel="暂无图片" style={styles.preview}><CommunityText style={styles.previewLabel}>暂无图片</CommunityText></View>;
+  }
+  return <Image source={{ uri: category.coverImage.url }} accessibilityLabel={category.coverImage.altText || `${category.nameZh}展示图`} contentFit="cover" onError={() => setFailed(true)} style={styles.preview} />;
 }
 
 const styles = StyleSheet.create({
@@ -91,6 +117,11 @@ const styles = StyleSheet.create({
   count: { color: colors.muted, fontSize: 12, marginTop: 'auto', paddingTop: 8 },
   preview: { alignItems: 'center', backgroundColor: '#e4e7e4', justifyContent: 'center', width: '32%' },
   previewLabel: { color: '#737a74', fontSize: 11, textAlign: 'center' },
+  credits: { marginTop: 20 },
+  creditToggle: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44 },
+  creditText: { color: colors.muted, fontSize: 11, lineHeight: 18 },
+  creditLink: { color: colors.selectedText, fontSize: 12 },
+  creditRow: { borderBottomColor: colors.divider, borderBottomWidth: 1, paddingVertical: 8 },
   expandButton: { alignItems: 'center', alignSelf: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center', marginTop: 18, minHeight: 44, paddingHorizontal: 12 },
   expandText: { color: colors.secondaryText, fontSize: 14 },
   expandArrow: { color: colors.secondaryText, fontSize: 18, lineHeight: 20 },

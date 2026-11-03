@@ -4,6 +4,8 @@ export type PlantCategory = {
   nameZh: string;
   nameEn: string;
   plantCount: number;
+  coverPlantId: string | null;
+  coverImage: PlantImage | null;
 };
 
 export type PlantCategoryRef = Pick<PlantCategory, 'slug' | 'nameZh' | 'nameEn'>;

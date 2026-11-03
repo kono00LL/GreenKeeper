@@ -24,3 +24,15 @@ test('resolves detail URLs without changing attribution or absolute URLs', async
   (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: { plant: { id: 'one', coverImage: image } } });
   expect((await plantApi.detail('one')).coverImage).toEqual(image);
 });
+
+test('resolves category cover URLs and preserves their source plant and credits', async () => {
+  (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: { categories: [
+    { id: 'ferns', coverPlantId: 'fern', coverImage: { url: '/uploads/fern.webp', altText: '蕨类', attribution: '作者', license: 'CC BY-SA 4.0' } },
+    { id: 'cacti', coverPlantId: null, coverImage: null },
+  ] } });
+  const categories = await plantApi.categories();
+  expect(categories[0].coverImage?.url).toBe('http://localhost:8080/uploads/fern.webp');
+  expect(categories[0].coverPlantId).toBe('fern');
+  expect(categories[0].coverImage?.attribution).toBe('作者');
+  expect(categories[1].coverImage).toBeNull();
+});

@@ -11,7 +11,7 @@ function resolveImageUrl<T extends { coverImage: PlantSummary['coverImage'] }>(p
 
 export const plantApi = {
   categories: async () =>
-    (await apiClient.get<{ categories: PlantCategory[] }>('/plants/categories')).data.categories,
+    (await apiClient.get<{ categories: PlantCategory[] }>('/plants/categories')).data.categories.map(resolveImageUrl),
   list: async (category: string) =>
     (await apiClient.get<{ items: PlantSummary[] }>('/plants', { params: { category } })).data.items.map(resolveImageUrl),
   detail: async (id: string) =>

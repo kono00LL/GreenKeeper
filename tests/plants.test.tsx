@@ -67,6 +67,26 @@ test('shows the first four categories, can expand, and opens a category list', a
   expect(router.push).toHaveBeenCalledWith({ pathname: '/plants/category/[slug]', params: { slug: 'ferns' } });
 });
 
+test('home shows category covers with accessible credits and falls back on image errors', async () => {
+  (plantApi.categories as jest.Mock).mockResolvedValueOnce(categories.map((category, index) => ({
+    ...category,
+    coverPlantId: `cover-${index}`,
+    coverImage: { url: `https://example.com/category-${index}.webp`, altText: `${category.nameZh}展示图`, attribution: '测试作者；已转换 WebP', license: 'CC BY-SA 4.0' },
+  })));
+  render(<PlantHomeScreen />);
+  expect(await screen.findByLabelText('蕨类展示图')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: '显示全部分类' }));
+  expect(screen.getByLabelText('分类6展示图')).toBeTruthy();
+  fireEvent.press(screen.getByRole('button', { name: '图片署名与许可' }));
+  expect(screen.getAllByText('测试作者；已转换 WebP')).toHaveLength(8);
+  expect(screen.getAllByText('CC BY-SA 4.0')).toHaveLength(8);
+  fireEvent.press(screen.getByRole('link', { name: '查看蕨类图片来源与许可' }));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/plants/[id]', params: { id: 'cover-0' } });
+  fireEvent(screen.getByLabelText('蕨类展示图'), 'onError');
+  expect(screen.queryByLabelText('蕨类展示图')).toBeNull();
+  expect(screen.getByText('暂无图片')).toBeTruthy();
+});
+
 test('loads a category list, marks unverified identities, and opens a plant', async () => {
   render(<PlantCategoryScreen slug="ferns" />);
   expect(await screen.findByText('铁线蕨')).toBeTruthy();
