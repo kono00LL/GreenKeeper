@@ -3,6 +3,7 @@ import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
+import { cleanupPreviewImages } from '@/services/preview-image';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
@@ -10,6 +11,10 @@ export default function RootLayout() {
   const hydrated = useAuthStore((state) => state.hydrated);
   const status = useAuthStore((state) => state.status);
   const bootstrap = useAuthStore((state) => state.bootstrap);
+
+  useEffect(() => {
+    void cleanupPreviewImages();
+  }, []);
 
   useEffect(() => {
     if (hydrated) void bootstrap();

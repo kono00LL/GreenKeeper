@@ -9,6 +9,16 @@ export type PlantCategory = {
 export type PlantCategoryRef = Pick<PlantCategory, 'slug' | 'nameZh' | 'nameEn'>;
 export type PlantIdentityStatus = 'pending' | 'verified';
 
+export type PlantImage = {
+  url: string;
+  altText: string | null;
+  sourceName?: string;
+  sourceUrl?: string;
+  license?: string;
+  licenseUrl?: string | null;
+  attribution?: string | null;
+};
+
 export type PlantSummary = {
   id: string;
   nameZh: string;
@@ -16,6 +26,7 @@ export type PlantSummary = {
   scientificName: string;
   identityStatus: PlantIdentityStatus;
   categories: PlantCategoryRef[];
+  coverImage: PlantImage | null;
 };
 
 export type PlantDetail = PlantSummary & {

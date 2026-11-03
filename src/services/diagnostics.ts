@@ -24,6 +24,8 @@ function redact(value: string) {
     .replace(/https?:\/\/[^\s?]+\?[^\s)]+/gi, (url) => `${url.split('?')[0]}?[redacted]`)
     .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
     .replace(/((?:api[-_]?key|access[-_]?token|refresh[-_]?token|secret|signature|sign)\s*[:=]\s*)[^\s&,;]+/gi, '$1[redacted]')
+    .replace(/\/(?:data\/user\/\d+|data\/data)\/[^\s),\]]+/g, '[local-path]')
+    .replace(/\/var\/mobile\/Containers\/Data\/Application\/[^\s),\]]+/g, '[local-path]')
     .replace(/file:\/\/[^\s)]+/gi, 'file://[redacted]');
 }
 

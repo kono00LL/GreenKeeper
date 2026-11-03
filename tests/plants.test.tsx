@@ -5,6 +5,14 @@ import { PlantHomeScreen } from '@/components/plants/plant-home-screen';
 import { PlantCategoryScreen } from '@/components/plants/plant-category-screen';
 import { PlantDetailScreen } from '@/components/plants/plant-detail-screen';
 import { plantApi } from '@/services/plant-api';
+import { Linking } from 'react-native';
+
+jest.mock('expo-image', () => ({
+  Image: (props: Record<string, unknown>) => {
+    const View = require('react-native').View;
+    return <View {...props} />;
+  },
+}));
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => false) },
@@ -28,6 +36,7 @@ const fern = {
   id: 'fern-1', nameZh: '铁线蕨', nameEn: null,
   scientificName: 'Adiantum capillus-veneris', identityStatus: 'pending' as const,
   categories: [{ slug: 'ferns', nameZh: '蕨类', nameEn: 'Ferns' }],
+  coverImage: null,
 };
 const detail = {
   ...fern,
@@ -66,6 +75,15 @@ test('loads a category list, marks unverified identities, and opens a plant', as
   expect(router.push).toHaveBeenCalledWith({ pathname: '/plants/[id]', params: { id: 'fern-1' } });
 });
 
+test('shows a cover image in the list and falls back to the placeholder when it fails', async () => {
+  (plantApi.list as jest.Mock).mockResolvedValueOnce([{ ...fern, coverImage: { url: 'https://example.com/fern.webp', altText: '铁线蕨展示图' } }]);
+  render(<PlantCategoryScreen slug="ferns" />);
+  const image = await screen.findByLabelText('铁线蕨展示图');
+  expect(image).toBeTruthy();
+  fireEvent(image, 'onError');
+  expect(await screen.findByText('暂无图片')).toBeTruthy();
+});
+
 test('shows plant identity and clear empty care data without implying verification or photos', async () => {
   render(<PlantDetailScreen id="fern-1" />);
   expect(await screen.findByText('铁线蕨')).toBeTruthy();
@@ -73,6 +91,36 @@ test('shows plant identity and clear empty care data without implying verificati
   expect(screen.getByText('养护资料待补充')).toBeTruthy();
   expect(screen.getByText('图片资料暂未添加')).toBeTruthy();
   expect(screen.getByText('Adiantum capillus-veneris')).toBeTruthy();
+});
+
+test('shows the cover image and attribution on plant details', async () => {
+  const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValueOnce(true);
+  (plantApi.detail as jest.Mock).mockResolvedValueOnce({
+    ...detail,
+    coverImage: {
+      url: 'https://example.com/fern.webp', altText: '铁线蕨展示图', sourceName: 'Wikimedia Commons',
+      sourceUrl: 'https://commons.wikimedia.org/wiki/File:Fern.jpg', license: 'CC BY-SA 4.0', licenseUrl: 'https://creativecommons.org/licenses/by-sa/4.0/', attribution: '作者，Wikimedia Commons',
+    },
+  });
+  render(<PlantDetailScreen id="fern-1" />);
+  expect(await screen.findByLabelText('铁线蕨展示图')).toBeTruthy();
+  expect(screen.getByText('Wikimedia Commons')).toBeTruthy();
+  expect(screen.getByText('许可证：CC BY-SA 4.0')).toBeTruthy();
+  expect(screen.getByText('署名：作者，Wikimedia Commons')).toBeTruthy();
+  fireEvent.press(screen.getByRole('link', { name: '查看图片来源' }));
+  expect(openUrl).toHaveBeenCalledWith('https://commons.wikimedia.org/wiki/File:Fern.jpg');
+  openUrl.mockRestore();
+});
+
+test('detail image failure falls back and the next plant image still loads', async () => {
+  (plantApi.detail as jest.Mock).mockResolvedValueOnce({ ...detail, coverImage: { url: 'https://example.com/old.webp', altText: '旧图' } });
+  const view = render(<PlantDetailScreen id="fern-1" />);
+  fireEvent(await screen.findByLabelText('旧图'), 'onError');
+  expect(screen.getByText('图片资料暂未添加')).toBeTruthy();
+  (plantApi.detail as jest.Mock).mockResolvedValueOnce({ ...detail, id: 'next', nameZh: '新植物', coverImage: { url: 'https://example.com/new.webp', altText: '新图' } });
+  view.rerender(<PlantDetailScreen id="next" />);
+  expect(await screen.findByLabelText('新图')).toBeTruthy();
+  expect(screen.queryByText('图片资料暂未添加')).toBeNull();
 });
 
 test('retries failed category loading and handles an empty catalogue', async () => {

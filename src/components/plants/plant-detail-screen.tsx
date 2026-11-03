@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
@@ -16,6 +17,11 @@ const careLabels = [
   ['repottingRequirement', '换盆'],
   ['pests', '害虫'],
 ] as const;
+
+async function openImageSource(url: string) {
+  try { await Linking.openURL(url); }
+  catch { Alert.alert('暂时无法打开链接', '请稍后重试'); }
+}
 
 function temperatureDescription(plant: PlantDetail | null) {
   if (!plant) return null;
@@ -63,9 +69,7 @@ export function PlantDetailScreen({ id }: { id: string }) {
       ) : (
         <>
           <ScrollView contentInsetAdjustmentBehavior="automatic" style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-            <View style={[styles.hero, { height: Math.round(height * 0.6) }]}>
-              <CommunityText style={styles.heroPlaceholder}>图片资料暂未添加</CommunityText>
-            </View>
+            <PlantHero key={`${plant.id}:${plant.coverImage?.url ?? 'empty'}`} image={plant.coverImage} label={plant.nameZh} height={Math.round(height * 0.6)} />
 
             <View style={styles.content}>
               {error && <PlantLoadState message="刷新失败，当前显示上次加载的资料" retry={() => void reload()} />}
@@ -114,6 +118,23 @@ export function PlantDetailScreen({ id }: { id: string }) {
               </View>
 
               <PlantAdvice plant={plant} />
+              {plant.coverImage && (
+                <View style={styles.sourceSection}>
+                  <CommunityText bold style={styles.sectionTitle}>图片来源</CommunityText>
+                  {plant.coverImage.sourceName && <CommunityText style={styles.sourceText}>{plant.coverImage.sourceName}</CommunityText>}
+                  {plant.coverImage.license && (plant.coverImage.licenseUrl ? (
+                    <Pressable accessibilityRole="link" accessibilityLabel="查看图片许可证" onPress={() => void openImageSource(plant.coverImage!.licenseUrl!)} style={styles.sourceLink}>
+                      <CommunityText style={styles.sourceUrl}>许可证：{plant.coverImage.license}</CommunityText>
+                    </Pressable>
+                  ) : <CommunityText style={styles.sourceText}>许可证：{plant.coverImage.license}</CommunityText>)}
+                  {plant.coverImage.attribution && <CommunityText style={styles.sourceText}>署名：{plant.coverImage.attribution}</CommunityText>}
+                  {plant.coverImage.sourceUrl && (
+                    <Pressable accessibilityRole="link" accessibilityLabel="查看图片来源" onPress={() => void openImageSource(plant.coverImage!.sourceUrl!)} style={styles.sourceLink}>
+                      <CommunityText style={styles.sourceUrl}>查看来源页面 ↗</CommunityText>
+                    </Pressable>
+                  )}
+                </View>
+              )}
             </View>
           </ScrollView>
           <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -127,13 +148,25 @@ export function PlantDetailScreen({ id }: { id: string }) {
   );
 }
 
+function PlantHero({ image, label, height }: { image: PlantDetail['coverImage']; label: string; height: number }) {
+  const [failed, setFailed] = useState(false);
+  if (!image || failed) {
+    return <View style={[styles.hero, { height }]}><CommunityText style={styles.heroPlaceholder}>图片资料暂未添加</CommunityText></View>;
+  }
+  return <Image accessibilityLabel={image.altText || label} contentFit="cover" onError={() => setFailed(true)} source={{ uri: image.url }} style={[styles.hero, { height }]} />;
+}
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.white, flex: 1 },
   scroll: { flex: 1 },
   scrollContent: { alignSelf: 'center', maxWidth: 760, paddingBottom: 24, width: '100%' },
   hero: { alignItems: 'center', backgroundColor: '#e8ece8', justifyContent: 'center' },
   heroPlaceholder: { color: '#69726b', fontSize: 14 },
-  backButton: { borderRadius: 22, height: 44, justifyContent: 'center', left: 14, position: 'absolute', width: 44, zIndex: 1 },
+  sourceSection: { borderTopColor: colors.divider, borderTopWidth: 1, marginTop: 20, paddingTop: 16 },
+  sourceText: { color: colors.secondaryText, fontSize: 13, lineHeight: 21 },
+  sourceUrl: { color: colors.selectedText, fontSize: 13, lineHeight: 21, marginTop: 4 },
+  sourceLink: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44 },
+  backButton: { backgroundColor: '#ffffffdd', borderRadius: 22, height: 44, justifyContent: 'center', left: 14, position: 'absolute', width: 44, zIndex: 1 },
   backIcon: { color: colors.text, fontSize: 34, lineHeight: 38, textAlign: 'center' },
   content: { paddingHorizontal: 20 },
   identityLine: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 20 },

@@ -23,6 +23,9 @@ let mockCameraPermissionResult = { granted: true };
 let mockPickResult: { canceled: boolean; assets?: { uri: string }[] } = { canceled: true };
 const mockRequestCameraPermission = jest.fn();
 const mockLaunchImageLibrary = jest.fn();
+const mockPreparePreviewImage = jest.fn();
+const mockGetPreviewImageDiagnostics = jest.fn();
+const mockDeletePreviewImage = jest.fn();
 
 jest.mock('expo-router', () => ({
   router: {
@@ -61,6 +64,12 @@ jest.mock('expo-image-picker', () => ({
   launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibrary(...args),
 }));
 
+jest.mock('@/services/preview-image', () => ({
+  preparePreviewImage: (...args: unknown[]) => mockPreparePreviewImage(...args),
+  getPreviewImageDiagnostics: (...args: unknown[]) => mockGetPreviewImageDiagnostics(...args),
+  deletePreviewImage: (...args: unknown[]) => mockDeletePreviewImage(...args),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   (useLocalSearchParams as jest.Mock).mockReturnValue({ uri: 'file:///plant.jpg' });
@@ -68,6 +77,16 @@ beforeEach(() => {
   mockCameraPermissionResult = { granted: true };
   mockPickResult = { canceled: true };
   mockLaunchImageLibrary.mockImplementation(async () => mockPickResult);
+  mockPreparePreviewImage.mockImplementation(async (uri: string) =>
+    `file:///app/document/camera-preview/${uri.split('/').pop()}`,
+  );
+  mockGetPreviewImageDiagnostics.mockReturnValue({
+    uriScheme: 'file',
+    sourceLocation: 'application-document',
+    fileExists: true,
+    fileSizeBytes: 32,
+  });
+  mockDeletePreviewImage.mockResolvedValue(undefined);
   (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
   (router.canGoBack as jest.Mock).mockReturnValue(true);
 });
@@ -132,9 +151,10 @@ test('opens the image preview after selecting one gallery image', async () => {
   await waitFor(() =>
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/camera-preview',
-      params: { uri: 'file:///selected.jpg' },
+      params: { uri: 'file:///app/document/camera-preview/selected.jpg' },
     }),
   );
+  expect(mockPreparePreviewImage).toHaveBeenCalledWith('file:///selected.jpg');
   expect(mockLaunchImageLibrary).toHaveBeenCalledWith({
     mediaTypes: ['images'],
     allowsMultipleSelection: false,
@@ -150,9 +170,21 @@ test('captures a photo and opens the image preview', async () => {
   await waitFor(() =>
     expect(router.push).toHaveBeenCalledWith({
       pathname: '/camera-preview',
-      params: { uri: 'file:///captured.jpg' },
+      params: { uri: 'file:///app/document/camera-preview/captured.jpg' },
     }),
   );
+  expect(mockPreparePreviewImage).toHaveBeenCalledWith('file:///captured.jpg');
+});
+
+test('does not open preview when the selected image cannot be copied', async () => {
+  mockPreparePreviewImage.mockRejectedValueOnce(new Error('preview copy failed'));
+  mockPickResult = { canceled: false, assets: [{ uri: 'file:///selected.jpg' }] };
+  render(<CameraCaptureScreen />);
+
+  fireEvent.press(screen.getByRole('button', { name: '图册' }));
+
+  expect(await screen.findByText('图片读取失败，请重新选择')).toBeTruthy();
+  expect(router.push).not.toHaveBeenCalled();
 });
 
 test('shows the selected local image and provides return and reselect actions', () => {
@@ -210,6 +242,45 @@ test('failure to load the saved server image offers a display retry without uplo
   expect(uploadImage).toHaveBeenCalledTimes(1);
   expect(errorSpy).toHaveBeenCalledWith('[image] preview load failed', expect.objectContaining({ source: 'server', message: 'offline' }));
   errorSpy.mockRestore();
+});
+
+test('logs safe local file metadata when the preview image fails to load', async () => {
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+  render(<CameraPreviewScreen />);
+  const image = screen.getByLabelText('已选择的图片');
+  fireEvent(image, 'error', {
+    nativeEvent: { error: 'FileNotFoundException(/data/user/0/host.exp.exponent/cache/ImagePicker/photo.jpg)' },
+  });
+
+  expect(mockGetPreviewImageDiagnostics).toHaveBeenCalledWith('file:///plant.jpg');
+  expect(errorSpy).toHaveBeenCalledWith('[image] preview load failed', expect.objectContaining({
+    source: 'local',
+    uriScheme: 'file',
+    sourceLocation: 'application-document',
+    fileExists: true,
+    fileSizeBytes: 32,
+    message: expect.not.stringContaining('/data/user/0/host.exp.exponent'),
+  }));
+  expect(await screen.findByText('本地图片加载失败，请重新选择')).toBeTruthy();
+  errorSpy.mockRestore();
+});
+
+test('removes the temporary app-owned image when leaving the preview', () => {
+  const view = render(<CameraPreviewScreen />);
+  view.unmount();
+
+  expect(mockDeletePreviewImage).toHaveBeenCalledWith('file:///plant.jpg');
+});
+
+test('keeps the preview image when a session change remounts preview state', () => {
+  const view = render(<CameraPreviewScreen />);
+
+  act(() => useAuthStore.getState().clearSession());
+
+  expect(mockDeletePreviewImage).not.toHaveBeenCalled();
+
+  view.unmount();
+  expect(mockDeletePreviewImage).toHaveBeenCalledWith('file:///plant.jpg');
 });
 
 test('leaving the preview cancels the pending upload and avoids state updates', async () => {

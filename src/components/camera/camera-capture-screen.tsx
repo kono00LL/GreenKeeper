@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
 import { logDiagnostic } from '@/services/diagnostics';
+import { preparePreviewImage } from '@/services/preview-image';
 
 export function CameraCaptureScreen() {
   const cameraRef = useRef<CameraView>(null);
@@ -24,8 +25,13 @@ export function CameraCaptureScreen() {
     else router.replace('/(tabs)');
   }, []);
 
-  const openPreview = (uri: string) => {
-    router.push({ pathname: '/camera-preview', params: { uri } });
+  const openPreview = async (uri: string) => {
+    try {
+      const previewUri = await preparePreviewImage(uri);
+      router.push({ pathname: '/camera-preview', params: { uri: previewUri } });
+    } catch {
+      setMessage('图片读取失败，请重新选择');
+    }
   };
 
   const chooseFromGallery = async () => {
@@ -42,7 +48,7 @@ export function CameraCaptureScreen() {
         allowsMultipleSelection: false,
         quality: 1,
       });
-      if (!result.canceled && result.assets[0]?.uri) openPreview(result.assets[0].uri);
+      if (!result.canceled && result.assets[0]?.uri) await openPreview(result.assets[0].uri);
     } catch (error) {
       logDiagnostic('[camera] gallery picker failed', error);
       setMessage('打开图库失败，请重试');
@@ -55,7 +61,7 @@ export function CameraCaptureScreen() {
     setMessage(null);
     try {
       const photo = await cameraRef.current?.takePictureAsync();
-      if (photo?.uri) openPreview(photo.uri);
+      if (photo?.uri) await openPreview(photo.uri);
       else {
         logDiagnostic('[camera] capture returned no photo', new Error('takePictureAsync returned no photo'));
         setMessage('拍摄失败，请重试');
