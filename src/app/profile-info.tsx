@@ -1,7 +1,7 @@
 import { isAxiosError } from 'axios';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCurrentUser, updateCurrentUser } from '@/services/auth-api';
 import { useAuthStore } from '@/store/auth-store';
@@ -126,45 +126,49 @@ export default function ProfileInfoPage() {
         visible={editor !== null}
         onRequestClose={() => !saving && setEditor(null)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{editor === 'name' ? '修改昵称' : '选择性别'}</Text>
-              <Pressable onPress={() => !saving && setEditor(null)}>
-                <Text style={styles.cancel}>取消</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalKeyboardAvoider}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editor === 'name' ? '修改昵称' : '选择性别'}</Text>
+                <Pressable onPress={() => !saving && setEditor(null)}>
+                  <Text style={styles.cancel}>取消</Text>
+                </Pressable>
+              </View>
+              {editor === 'name' ? (
+                <TextInput
+                  autoFocus
+                  maxLength={10}
+                  onChangeText={setDraftName}
+                  placeholder="请输入昵称"
+                  placeholderTextColor="#99999b"
+                  style={styles.modalInput}
+                  value={draftName}
+                />
+              ) : (
+                <View style={styles.genderOptions}>
+                  {(Object.keys(genderLabels) as Gender[]).map((gender) => (
+                    <Pressable
+                      key={gender}
+                      onPress={() => setDraftGender(gender)}
+                      style={[styles.genderOption, draftGender === gender && styles.genderOptionSelected]}>
+                      <Text style={[styles.genderText, draftGender === gender && styles.genderTextSelected]}>
+                        {genderLabels[gender]}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+              {error && <Text style={styles.error}>{error}</Text>}
+              <Pressable
+                disabled={saving}
+                onPress={save}
+                style={[styles.saveButton, saving && styles.disabled]}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>保存</Text>}
               </Pressable>
             </View>
-            {editor === 'name' ? (
-              <TextInput
-                autoFocus
-                maxLength={10}
-                onChangeText={setDraftName}
-                placeholder="请输入昵称"
-                placeholderTextColor="#99999b"
-                style={styles.modalInput}
-                value={draftName}
-              />
-            ) : (
-              <View style={styles.genderOptions}>
-                {(Object.keys(genderLabels) as Gender[]).map((gender) => (
-                  <Pressable
-                    key={gender}
-                    onPress={() => setDraftGender(gender)}
-                    style={[styles.genderOption, draftGender === gender && styles.genderOptionSelected]}>
-                    <Text style={[styles.genderText, draftGender === gender && styles.genderTextSelected]}>
-                      {genderLabels[gender]}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-            {error && <Text style={styles.error}>{error}</Text>}
-            <Pressable
-              disabled={saving}
-              onPress={save}
-              style={[styles.saveButton, saving && styles.disabled]}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>保存</Text>}
-            </Pressable>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
       <Pressable accessibilityRole="button" onPress={handleLogout} style={styles.logoutButton}>
@@ -187,6 +191,7 @@ const styles = StyleSheet.create({
   value: { color: '#99999b', fontSize: 16, marginRight: 12 },
   arrow: { color: '#99999b', fontSize: 25, fontWeight: '300', lineHeight: 28 },
   modalBackdrop: { backgroundColor: 'rgba(0,0,0,0.35)', flex: 1, justifyContent: 'flex-end' },
+  modalKeyboardAvoider: { flex: 1, justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#ffffff', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20, paddingBottom: 32 },
   modalHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle: { color: '#111111', fontSize: 18, fontWeight: '600' },

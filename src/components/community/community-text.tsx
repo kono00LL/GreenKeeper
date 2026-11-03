@@ -12,8 +12,12 @@ export function CommunityFontProvider({ children }: { children: ReactNode }) {
   // Content stays usable with system fonts during loading or after a font error.
   return <FontsReady.Provider value={loaded}>{children}</FontsReady.Provider>;
 }
-export function CommunityText({ bold = false, style, ...props }: TextProps & { bold?: boolean }) {
+export function useCommunityFontFamily(bold = false) {
   const loaded = useContext(FontsReady);
+  return loaded ? (bold ? 'OPPOSans-Bold' : 'OPPOSans-Regular') : undefined;
+}
+export function CommunityText({ bold = false, style, ...props }: TextProps & { bold?: boolean }) {
+  const fontFamily = useCommunityFontFamily(bold);
   return (
     <Text
       {...props}
@@ -21,8 +25,8 @@ export function CommunityText({ bold = false, style, ...props }: TextProps & { b
         {
           color: colors.text,
           fontSize: 16,
-          fontFamily: loaded ? (bold ? 'OPPOSans-Bold' : 'OPPOSans-Regular') : undefined,
-          fontWeight: !loaded && bold ? '700' : '400',
+          fontFamily,
+          fontWeight: bold && !fontFamily ? '700' : '400',
         },
         style,
       ]}

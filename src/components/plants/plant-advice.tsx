@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { CommunityText } from '@/components/community/community-text';
+import { CommunityMarkdown } from '@/components/community/community-markdown';
 import { colors } from '@/constants/color';
 import { askPlantAdvice, plantAdviceErrorMessage } from '@/services/ai-api';
 import { useAuthStore } from '@/store/auth-store';
@@ -58,7 +59,7 @@ export function PlantAdvice({ plant }: { plant: PlantDetail }) {
         {loading ? <ActivityIndicator color={colors.white} /> : <CommunityText bold style={styles.buttonText}>询问 AI</CommunityText>}
       </Pressable>
       {message ? <CommunityText accessibilityRole="alert" style={styles.message}>{message}</CommunityText> : null}
-      {answer ? <View style={styles.answer}><CommunityText bold style={styles.answerTitle}>建议</CommunityText><CommunityText style={styles.answerText}>{answer}</CommunityText></View> : null}
+      {answer ? <View style={styles.answer}><CommunityText bold style={styles.answerTitle}>建议</CommunityText><CommunityMarkdown style={styles.answerText}>{answer}</CommunityMarkdown></View> : null}
     </View>
   );
 }
