@@ -7,6 +7,7 @@ import { postStore, usePostStore } from '@/store/post-store';
 import { idleDetail } from '@/store/post-state';
 import { colors } from '@/constants/color';
 import { CommunityText } from './community-text';
+import { CommunityMarkdown } from './community-markdown';
 import { CollectionButton } from './collection-button';
 import { LoadState } from './load-state';
 import { PostGallery } from './post-gallery';
@@ -70,7 +71,7 @@ export function PostDetailScreen({ id }: { id: string }) {
             <CommunityText bold style={styles.title}>
               {post.title}
             </CommunityText>
-            <CommunityText style={styles.text}>{post.content}</CommunityText>
+            <CommunityMarkdown style={styles.text}>{post.content}</CommunityMarkdown>
           </ScrollView>
           <View style={styles.footer}>
             <CollectionButton postId={id} returnTo={`/posts/${encodeURIComponent(id)}`} />

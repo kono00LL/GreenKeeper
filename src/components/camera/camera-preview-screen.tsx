@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
@@ -8,6 +8,8 @@ import { imageUploadErrorMessage, uploadImage, type UploadedImage } from '@/serv
 import { useEffect, useRef, useState } from 'react';
 import { identifyPlant, identificationErrorMessage } from '@/services/plant-identification-api';
 import { useAuthStore } from '@/store/auth-store';
+import { diagnosticPath, logDiagnostic, logNonHttpDiagnostic } from '@/services/diagnostics';
+import { deletePreviewImage, getPreviewImageDiagnostics } from '@/services/preview-image';
 import type { PlantIdentification } from '@/types/plant-identification';
 import { IdentificationResults } from './identification-results';
 
@@ -15,6 +17,11 @@ export function CameraPreviewScreen() {
   const { uri } = useLocalSearchParams<{ uri?: string | string[] }>();
   const imageUri = Array.isArray(uri) ? uri[0] : uri;
   const sessionVersion = useAuthStore((state) => state.sessionVersion);
+
+  useEffect(() => () => {
+    if (imageUri) void deletePreviewImage(imageUri);
+  }, [imageUri]);
+
   return <ImagePreview key={`${imageUri}-${sessionVersion}`} imageUri={imageUri} />;
 }
 
@@ -46,7 +53,10 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
       const result = await identifyPlant(imageUri, controller.signal);
       if (isCurrent()) setIdentification(result);
     } catch (error) {
-      if (isCurrent()) setMessage(identificationErrorMessage(error));
+      if (isCurrent()) {
+        logNonHttpDiagnostic('[identification] image preparation failed', error);
+        setMessage(identificationErrorMessage(error));
+      }
     } finally {
       request.current = null;
       if (isCurrent()) setIdentifying(false);
@@ -67,7 +77,10 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
         setMessage('上传成功');
       }
     } catch (error) {
-      if (!controller.signal.aborted) setMessage(imageUploadErrorMessage(error));
+      if (!controller.signal.aborted) {
+        logNonHttpDiagnostic('[image] upload preparation failed', error);
+        setMessage(imageUploadErrorMessage(error));
+      }
     } finally {
       request.current = null;
       if (!controller.signal.aborted) setUploading(false);
@@ -91,7 +104,13 @@ function ImagePreview({ imageUri }: { imageUri?: string }) {
             contentFit="contain"
             source={{ uri: uploadedImage?.url ?? imageUri }}
             style={styles.image}
-            onError={() => {
+            onError={(event) => {
+              const localDiagnostics = uploadedImage ? {} : getPreviewImageDiagnostics(imageUri ?? '');
+              logDiagnostic('[image] preview load failed', new Error(event.error), {
+                source: uploadedImage ? 'server' : 'local',
+                platform: Platform.OS,
+                ...(uploadedImage ? { path: diagnosticPath(uploadedImage.url) } : localDiagnostics),
+              });
               setImageFailed(true);
               setMessage(uploadedImage ? '图片已上传，服务器图片加载失败' : '本地图片加载失败，请重新选择');
             }}

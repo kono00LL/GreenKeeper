@@ -1,5 +1,6 @@
 import { router } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import { Image } from 'expo-image';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
@@ -7,6 +8,7 @@ import { colors } from '@/constants/color';
 import { plantApi } from '@/services/plant-api';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { PlantLoadState } from './plant-load-state';
+import type { PlantSummary } from '@/types/plant';
 
 export function PlantCategoryScreen({ slug }: { slug: string }) {
   const insets = useSafeAreaInsets();
@@ -53,7 +55,7 @@ export function PlantCategoryScreen({ slug }: { slug: string }) {
                 accessibilityLabel={`查看植物：${plant.nameZh}`}
                 onPress={() => router.push({ pathname: '/plants/[id]', params: { id: plant.id } })}
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-                <View style={styles.plantImagePlaceholder}><CommunityText style={styles.imageLabel}>暂无图片</CommunityText></View>
+                <PlantThumbnail key={plant.coverImage?.url ?? 'empty'} image={plant.coverImage} label={plant.nameZh} />
                 <View style={styles.plantCopy}>
                   <View style={styles.nameLine}>
                     <CommunityText bold numberOfLines={1} style={styles.plantName}>{plant.nameZh}</CommunityText>
@@ -71,6 +73,14 @@ export function PlantCategoryScreen({ slug }: { slug: string }) {
   );
 }
 
+function PlantThumbnail({ image, label }: { image: PlantSummary['coverImage']; label: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!image || failed) {
+    return <View accessibilityLabel="暂无图片" style={styles.plantImagePlaceholder}><CommunityText style={styles.imageLabel}>暂无图片</CommunityText></View>;
+  }
+  return <Image accessibilityLabel={image.altText || label} contentFit="cover" onError={() => setFailed(true)} source={{ uri: image.url }} style={styles.plantImagePlaceholder} />;
+}
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.white, flex: 1 },
   header: { alignItems: 'center', borderBottomColor: colors.divider, borderBottomWidth: 1, flexDirection: 'row', minHeight: 58, paddingHorizontal: 12 },
@@ -84,7 +94,7 @@ const styles = StyleSheet.create({
   rows: { backgroundColor: colors.white },
   row: { alignItems: 'center', borderBottomColor: colors.divider, borderBottomWidth: 1, flexDirection: 'row', gap: 12, minHeight: 92, paddingVertical: 10 },
   pressed: { opacity: 0.7 },
-  plantImagePlaceholder: { alignItems: 'center', backgroundColor: '#eef0ed', borderRadius: 6, height: 68, justifyContent: 'center', width: 76 },
+  plantImagePlaceholder: { alignItems: 'center', backgroundColor: '#eef0ed', borderRadius: 6, height: 68, justifyContent: 'center', overflow: 'hidden', width: 76 },
   imageLabel: { color: '#737a74', fontSize: 10 },
   plantCopy: { flex: 1, gap: 5 },
   nameLine: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

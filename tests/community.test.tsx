@@ -91,6 +91,7 @@ test('confirmed collection updates the same data used by cards and detail', asyn
   expect(postStore.getState().entities.a.collected).toBe(true);
 });
 test('image failure has a retry and absent images have a placeholder', async () => {
+  const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
   const view = render(
     <PostImageView
       image={{ id: '1', url: 'https://example.com/1.jpg', width: null, height: null }}
@@ -99,10 +100,12 @@ test('image failure has a retry and absent images have a placeholder', async () 
     />,
   );
   fireEvent(screen.getByLabelText('帖子图片'), 'error', { nativeEvent: { error: 'offline' } });
+  expect(errorSpy).toHaveBeenCalledWith('[image] community image load failed', expect.objectContaining({ path: '/1.jpg' }));
   fireEvent.press(screen.getByRole('button', { name: '重试图片' }), { stopPropagation: jest.fn() });
   expect(screen.getByLabelText('帖子图片')).toBeTruthy();
   view.rerender(<PostImageView height={180} label="帖子图片" />);
   expect(screen.getByText('暂无图片')).toBeTruthy();
+  errorSpy.mockRestore();
 });
 test('gallery opens selected image, changes index and keeps it after closing', async () => {
   render(

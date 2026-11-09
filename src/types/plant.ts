@@ -4,10 +4,22 @@ export type PlantCategory = {
   nameZh: string;
   nameEn: string;
   plantCount: number;
+  coverPlantId: string | null;
+  coverImage: PlantImage | null;
 };
 
 export type PlantCategoryRef = Pick<PlantCategory, 'slug' | 'nameZh' | 'nameEn'>;
 export type PlantIdentityStatus = 'pending' | 'verified';
+
+export type PlantImage = {
+  url: string;
+  altText: string | null;
+  sourceName?: string;
+  sourceUrl?: string;
+  license?: string;
+  licenseUrl?: string | null;
+  attribution?: string | null;
+};
 
 export type PlantSummary = {
   id: string;
@@ -16,6 +28,7 @@ export type PlantSummary = {
   scientificName: string;
   identityStatus: PlantIdentityStatus;
   categories: PlantCategoryRef[];
+  coverImage: PlantImage | null;
 };
 
 export type PlantDetail = PlantSummary & {

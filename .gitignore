@@ -43,5 +43,6 @@ example
 
 # generated native folders
 /ios
-/android
 docs/
+
+邮箱模板.html
