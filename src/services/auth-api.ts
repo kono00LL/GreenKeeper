@@ -25,6 +25,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return response.data;
 }
 
+export async function loginWithWeChat(code: string): Promise<AuthResponse> {
+  const response = await refreshClient.post<AuthResponse>('/auth/wechat/android', { code }, withoutAuthRefresh());
+  return response.data;
+}
+
 export async function requestEmailCode(email: string, purpose: 'login' | 'password_reset'): Promise<void> {
   await refreshClient.post('/auth/email-code', { email, purpose }, withoutAuthRefresh());
 }

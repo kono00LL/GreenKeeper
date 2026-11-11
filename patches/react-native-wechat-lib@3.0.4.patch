@@ -1,0 +1,15 @@
+diff --git a/src/index.js b/src/index.js
+index 3bb59a62dc860645e9fa034b0c43da824907d678..a8711bb6b34c658fb50d1a9933025901a963cc28 100644
+--- a/src/index.js
++++ b/src/index.js
+@@ -10,6 +10,10 @@ if (WeChat == null) {
+   WeChat = WechatLib;
+ }
+ 
++if (WeChat == null) {
++  WeChat = NativeModules.RCTWeChat;
++}
++
+ // Event emitter to dispatch request and response from WeChat.
+ const emitter = new EventEmitter();
+ 

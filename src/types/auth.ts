@@ -3,7 +3,7 @@ export type Gender = 'male' | 'female' | 'private';
 
 export type User = {
   user_id: string;
-  user_email: string;
+  user_email: string | null;
   user_name: string;
   avatar_url: string | null;
   gender: Gender;

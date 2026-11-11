@@ -1,11 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import { PlantHomeScreen } from '@/components/plants/plant-home-screen';
 import { PlantCategoryScreen } from '@/components/plants/plant-category-screen';
 import { PlantDetailScreen } from '@/components/plants/plant-detail-screen';
 import { plantApi } from '@/services/plant-api';
-import { Linking } from 'react-native';
+import { Alert, Linking } from 'react-native';
 
 jest.mock('expo-image', () => ({
   Image: (props: Record<string, unknown>) => {
@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (effect: () => void) => require('react').useEffect(effect, [effect]),
 }));
 jest.mock('@/services/plant-api', () => ({
-  plantApi: { categories: jest.fn(), list: jest.fn(), detail: jest.fn() },
+  plantApi: { categories: jest.fn(), list: jest.fn(), detail: jest.fn(), addMine: jest.fn() },
 }));
 
 const categories = [
@@ -111,6 +111,7 @@ test('shows plant identity and clear empty care data without implying verificati
   expect(screen.getByText('养护资料待补充')).toBeTruthy();
   expect(screen.getByText('图片资料暂未添加')).toBeTruthy();
   expect(screen.getByText('Adiantum capillus-veneris')).toBeTruthy();
+  expect(screen.getByRole('button', { name: '添加到我的植物' })).toBeTruthy();
 });
 
 test('shows the cover image and attribution on plant details', async () => {
@@ -187,7 +188,36 @@ test('shows partial care fields, zero temperature, and expands a multiline summa
   expect(screen.getByText(summary).props.numberOfLines).toBe(5);
   fireEvent.press(screen.getByRole('button', { name: '阅读更多' }));
   expect(screen.getByText(summary).props.numberOfLines).toBeUndefined();
-  expect(screen.getByRole('button', { name: '添加到我的植物（暂未开放）' }).props.accessibilityState.disabled).toBe(true);
+  expect(screen.getByRole('button', { name: '添加到我的植物' }).props.accessibilityState.disabled).not.toBe(true);
+});
+
+test('adds a plant instance, reports success, and allows repeated additions', async () => {
+  (plantApi.addMine as jest.Mock).mockResolvedValue({ instanceId: 'instance-1' });
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  render(<PlantDetailScreen id="fern-1" />);
+  const button = await screen.findByRole('button', { name: '添加到我的植物' });
+  fireEvent.press(button);
+  await waitFor(() => expect(plantApi.addMine).toHaveBeenCalledWith('fern-1'));
+  await waitFor(() => expect(alert).toHaveBeenCalledWith('添加成功', '已添加到我的植物'));
+  fireEvent.press(screen.getByRole('button', { name: '添加到我的植物' }));
+  await waitFor(() => expect(plantApi.addMine).toHaveBeenCalledTimes(2));
+  alert.mockRestore();
+});
+
+test('shows a retry message when adding a plant fails', async () => {
+  (plantApi.addMine as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  render(<PlantDetailScreen id="fern-1" />);
+  fireEvent.press(await screen.findByRole('button', { name: '添加到我的植物' }));
+  await waitFor(() => expect(alert).toHaveBeenCalledWith('添加失败', '请检查网络后重试。'));
+  alert.mockRestore();
+});
+
+test('returns to the plant detail after signing in when adding requires authentication', async () => {
+  (plantApi.addMine as jest.Mock).mockRejectedValueOnce({ response: { status: 401 } });
+  render(<PlantDetailScreen id="fern-1" />);
+  fireEvent.press(await screen.findByRole('button', { name: '添加到我的植物' }));
+  await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: '/auth', params: { returnTo: '/plants/fern-1' } }));
 });
 
 test('ignores an old plant response after the route changes', async () => {

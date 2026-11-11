@@ -35,7 +35,7 @@ export default function ProfilePage() {
               {authenticated ? user?.user_name : '未登录'}
             </Text>
             <Text ellipsizeMode="tail" numberOfLines={1} style={styles.caption}>
-              {authenticated ? user?.user_email : '登录后保存你的植物记录'}
+              {authenticated ? user?.user_email || '微信登录' : '登录后保存你的植物记录'}
             </Text>
           </View>
           <Text style={styles.chevron}>›</Text>
@@ -47,7 +47,14 @@ export default function ProfilePage() {
           <Text style={styles.menuLabel}>我的收藏</Text>
           <Text style={styles.menuChevron}>›</Text>
         </Pressable>
-        {!authenticated && <Text style={styles.hint}>点击头像或账户信息，使用邮箱注册或登录</Text>}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/garden/reminders')}
+          style={({ pressed }) => [styles.menuRow, pressed && styles.pressed]}>
+          <Text style={styles.menuLabel}>养护提醒</Text>
+          <Text style={styles.menuChevron}>›</Text>
+        </Pressable>
+        {!authenticated && <Text style={styles.hint}>点击头像或账户信息，使用邮箱或微信登录</Text>}
       </View>
     </SafeAreaView>
   );

@@ -24,3 +24,9 @@ test('opens the collection route for signed-in users and auth for guests', () =>
   fireEvent.press(screen.getByText('我的收藏'));
   expect(router.push).toHaveBeenLastCalledWith('/collections');
 });
+
+test('exposes care reminders from account settings', () => {
+  render(<ProfilePage />);
+  fireEvent.press(screen.getByText('养护提醒'));
+  expect(router.push).toHaveBeenCalledWith('/garden/reminders');
+});

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommunityText } from '@/components/community/community-text';
 import { colors } from '@/constants/color';
@@ -10,6 +10,7 @@ import type { PlantDetail } from '@/types/plant';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { PlantLoadState } from './plant-load-state';
 import { PlantAdvice } from './plant-advice';
+import { statusOf } from '@/services/post-errors';
 
 const careLabels = [
   ['sunlightRequirement', '阳光'],
@@ -39,12 +40,33 @@ export function PlantDetailScreen({ id }: { id: string }) {
   const fetchPlant = useCallback(() => plantApi.detail(id), [id]);
   const { data: plant, loading, error, reload } = usePlantResource(id, fetchPlant);
   const [expandedFor, setExpandedFor] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const addingRef = useRef(false);
   const expanded = expandedFor === id;
   const temperature = temperatureDescription(plant);
   const careItems = [
     ['temperature', '温度', temperature] as const,
     ...careLabels.map(([key, label]) => [key, label, plant?.[key] ?? null] as const),
   ];
+
+  const addToGarden = async () => {
+    if (!plant || addingRef.current) return;
+    addingRef.current = true;
+    setAdding(true);
+    try {
+      await plantApi.addMine(plant.id);
+      Alert.alert('添加成功', '已添加到我的植物');
+    } catch (addError) {
+      if (statusOf(addError) === 401) {
+        router.push({ pathname: '/auth', params: { returnTo: `/plants/${plant.id}` } });
+      } else {
+        Alert.alert('添加失败', '请检查网络后重试。');
+      }
+    } finally {
+      addingRef.current = false;
+      setAdding(false);
+    }
+  };
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
@@ -138,8 +160,8 @@ export function PlantDetailScreen({ id }: { id: string }) {
             </View>
           </ScrollView>
           <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-            <Pressable accessibilityRole="button" accessibilityLabel="添加到我的植物（暂未开放）" accessibilityState={{ disabled: true }} disabled style={styles.addButton}>
-              <CommunityText style={styles.addButtonText}>添加到我的植物（暂未开放）</CommunityText>
+            <Pressable accessibilityRole="button" accessibilityLabel="添加到我的植物" accessibilityState={{ disabled: adding }} disabled={adding} onPress={() => void addToGarden()} style={[styles.addButton, adding && styles.addButtonDisabled]}>
+              {adding ? <ActivityIndicator color={colors.white} /> : <CommunityText style={styles.addButtonText}>添加到我的植物</CommunityText>}
             </Pressable>
           </View>
         </>
@@ -190,6 +212,7 @@ const styles = StyleSheet.create({
   careLabel: { color: colors.secondaryText, fontSize: 14, width: 64 },
   careValue: { color: colors.text, flex: 1, fontSize: 14, lineHeight: 21 },
   bottomBar: { alignSelf: 'center', borderTopColor: colors.divider, borderTopWidth: 1, maxWidth: 760, paddingHorizontal: 18, paddingTop: 10, width: '100%' },
-  addButton: { alignItems: 'center', backgroundColor: '#e7e9e7', borderRadius: 6, justifyContent: 'center', minHeight: 48 },
-  addButtonText: { color: colors.muted, fontSize: 15 },
+  addButton: { alignItems: 'center', backgroundColor: colors.selectedText, borderRadius: 6, justifyContent: 'center', minHeight: 48 },
+  addButtonDisabled: { opacity: 0.65 },
+  addButtonText: { color: colors.white, fontSize: 15 },
 });

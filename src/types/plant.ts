@@ -31,6 +31,12 @@ export type PlantSummary = {
   coverImage: PlantImage | null;
 };
 
+export type MyPlant = PlantSummary & {
+  instanceId: string;
+  createdAt: string;
+  customName: string | null;
+};
+
 export type PlantDetail = PlantSummary & {
   aliases: { name: string; language: string | null }[];
   summary: string | null;

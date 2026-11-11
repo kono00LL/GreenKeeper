@@ -1,5 +1,5 @@
-import { PlaceholderPage } from '@/components/placeholder-page';
+import { GardenScreen } from '@/components/garden/garden-screen';
 
 export default function GardenPage() {
-  return <PlaceholderPage title="花园" route="/garden" />;
+  return <GardenScreen />;
 }
