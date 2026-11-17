@@ -1,5 +1,7 @@
-import type { AuthResponse, AuthTokens, Gender, User, UserResponse } from '@/types/auth';
+import type { AuthResponse, Gender, User, UserResponse } from '@/types/auth';
 import { apiClient, refreshClient, withoutAuthRefresh } from '@/services/http';
+
+export { refreshSession, logout } from '@/services/auth-session-api';
 
 export async function register(
   email: string,
@@ -55,17 +57,4 @@ export async function getCurrentUser(skipAuthRefresh = false): Promise<User> {
 export async function updateCurrentUser(updates: { user_name?: string; gender?: Gender }): Promise<User> {
   const response = await apiClient.put<UserResponse>('/user/userinfo', updates);
   return response.data.user;
-}
-
-export async function refreshSession(refreshToken: string): Promise<AuthTokens> {
-  const response = await refreshClient.get<AuthTokens>('/user/refresh', {
-    headers: { Authorization: `Bearer ${refreshToken}` },
-  });
-  return response.data;
-}
-
-export async function logout(token: string): Promise<void> {
-  await refreshClient.post('/user/logout', null, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
 }

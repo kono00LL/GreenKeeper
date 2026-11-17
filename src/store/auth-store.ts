@@ -2,10 +2,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  getCurrentUser,
+  getSessionUser,
   logout as logoutRequest,
   refreshSession as refreshSessionRequest,
-} from '@/services/auth-api';
+} from '@/services/auth-session-api';
 import type { AuthStatus, User } from '@/types/auth';
 
 type AuthState = {
@@ -70,7 +70,7 @@ export const useAuthStore = create<AuthState>()(
           set({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
 
           try {
-            const user = await getCurrentUser(true);
+            const user = await getSessionUser(tokens.access_token);
             if (get().sessionVersion !== version) return false;
             set({ status: 'authenticated', user });
           } catch {

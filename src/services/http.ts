@@ -1,14 +1,11 @@
 import {
-  create,
-  AxiosHeaders,
   type AxiosError,
   type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
 } from 'axios';
 import { useAuthStore } from '@/store/auth-store';
-import { createRequestId, logDiagnostic } from '@/services/diagnostics';
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+import { logDiagnostic } from '@/services/diagnostics';
+import { apiClient, refreshClient, API_BASE_URL } from '@/services/http-transport';
 
 type AuthRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
@@ -16,26 +13,7 @@ type AuthRequestConfig = InternalAxiosRequestConfig & {
   skipAuthRefresh?: boolean;
 };
 
-export const apiClient = create({
-  baseURL: API_BASE_URL,
-  timeout: 10_000,
-  headers: { 'Content-Type': 'application/json' },
-});
-
-export const refreshClient = create({
-  baseURL: API_BASE_URL,
-  timeout: 10_000,
-  headers: { 'Content-Type': 'application/json' },
-});
-
 let refreshPromise: Promise<boolean> | null = null;
-
-function addRequestDiagnostics(config: InternalAxiosRequestConfig) {
-  const headers = AxiosHeaders.from(config.headers);
-  if (!headers.get('X-Request-ID')) headers.set('X-Request-ID', createRequestId());
-  config.headers = headers;
-  return config;
-}
 
 apiClient.interceptors.request.use((config) => {
   const { accessToken, sessionVersion } = useAuthStore.getState();
@@ -43,10 +21,8 @@ apiClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
-  return addRequestDiagnostics(config);
+  return config;
 });
-
-refreshClient.interceptors.request.use(addRequestDiagnostics);
 
 apiClient.interceptors.response.use(
   (response) => {
@@ -94,16 +70,8 @@ apiClient.interceptors.response.use(
   },
 );
 
-refreshClient.interceptors.response.use(
-  (response) => response,
-  (error: AxiosError) => {
-    if (error.code !== 'ERR_CANCELED') logDiagnostic('[api] request failed', error);
-    return Promise.reject(error);
-  },
-);
-
 export function withoutAuthRefresh(config: AxiosRequestConfig = {}) {
   return { ...config, skipAuthRefresh: true } as AxiosRequestConfig;
 }
 
-export { API_BASE_URL };
+export { apiClient, refreshClient, API_BASE_URL };

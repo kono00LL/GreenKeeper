@@ -82,7 +82,10 @@ test('requests permission only for user actions and keeps denied plans unschedul
 
 test('sends an immediate test through the same high importance channel and handles errors', async () => {
   expect(await sendTestNotification()).toBe('enabled');
-  expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith('plant-care', expect.objectContaining({ importance: 4, sound: 'default' }));
+  expect(Notifications.setNotificationChannelAsync).toHaveBeenCalledWith('plant-care', expect.objectContaining({ importance: 4 }));
+  // Android treats every explicit channel sound string as a bundled filename.
+  const channel = (Notifications.setNotificationChannelAsync as jest.Mock).mock.calls[0][1];
+  expect(channel).not.toHaveProperty('sound');
   expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(expect.objectContaining({ content: expect.objectContaining({ title: 'GreenKeeper 测试通知' }), trigger: { channelId: 'plant-care' } }));
   (Notifications.scheduleNotificationAsync as jest.Mock).mockRejectedValueOnce(new Error('native failed'));
   expect(await sendTestNotification()).toBe('failed');

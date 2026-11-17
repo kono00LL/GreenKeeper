@@ -8,8 +8,6 @@ type ResourceState<T> = {
   loading: boolean;
   error: { status?: number } | null;
 };
-
-// Ignore responses from a blurred screen, an older route, or an older refresh.
 export function usePlantResource<T>(key: string, fetcher: () => Promise<T>) {
   const requestVersion = useRef(0);
   const [state, setState] = useState<ResourceState<T>>({ key, data: null, loading: true, error: null });

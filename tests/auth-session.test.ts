@@ -1,9 +1,9 @@
 import { useAuthStore } from '@/store/auth-store';
-import { refreshSession, getCurrentUser } from '@/services/auth-api';
+import { refreshSession, getSessionUser } from '@/services/auth-session-api';
 import type { User } from '@/types/auth';
-jest.mock('@/services/auth-api', () => ({
+jest.mock('@/services/auth-session-api', () => ({
   refreshSession: jest.fn(),
-  getCurrentUser: jest.fn(),
+  getSessionUser: jest.fn(),
   logout: jest.fn(),
 }));
 const user = { user_id: 'a' } as User;
@@ -28,7 +28,7 @@ test('a late profile response cannot overwrite a newly signed-in user', async ()
     access_token: 'new',
     refresh_token: 'new',
   });
-  (getCurrentUser as jest.Mock).mockReturnValueOnce(
+  (getSessionUser as jest.Mock).mockReturnValueOnce(
     new Promise((r) => {
       resolve = r;
     }),
