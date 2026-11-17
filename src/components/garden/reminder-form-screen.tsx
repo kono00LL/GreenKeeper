@@ -10,6 +10,8 @@ import { reminderApi } from '@/services/reminder-api';
 import { addCalendarDays, previewSchedule, todayInZone } from '@/services/reminder-dates';
 import { statusOf } from '@/services/post-errors';
 import { careLabels, lastCareLabels, type CareType, type LastCareChoice, type RepeatUnit, type ReminderInput } from '@/types/reminder';
+import { savedReminderNotification } from '@/services/reminder-notification-sync';
+import { showSavedNotificationStatus } from './notification-controls';
 
 type Picker = 'plant' | 'care' | 'repeat' | 'last' | null;
 export function ReminderFormScreen({ instanceId, reminderId }: { instanceId?: string; reminderId?: string }) {
@@ -63,11 +65,10 @@ export function ReminderFormScreen({ instanceId, reminderId }: { instanceId?: st
     submittingRef.current = true; setSubmitting(true); setMessage(null);
     const base = { instanceId: selectedInstance, careType, interval, unit, time, timeZone };
     try {
-      if (reminderId) {
-        await reminderApi.update(reminderId, { ...base, ...(lastChanged ? { lastCareChoice: lastChoice, lastCareDate: schedule?.lastCareDate ?? null } : {}) });
-      } else {
-        await reminderApi.create({ ...base, lastCareChoice: lastChoice, lastCareDate: schedule?.lastCareDate ?? null } satisfies ReminderInput);
-      }
+      const saved = reminderId
+        ? await reminderApi.update(reminderId, { ...base, ...(lastChanged ? { lastCareChoice: lastChoice, lastCareDate: schedule?.lastCareDate ?? null } : {}) })
+        : await reminderApi.create({ ...base, lastCareChoice: lastChoice, lastCareDate: schedule?.lastCareDate ?? null } satisfies ReminderInput);
+      showSavedNotificationStatus(await savedReminderNotification(saved, true));
       router.replace('/garden/reminders');
     } catch (requestError) {
       if (statusOf(requestError) === 401) login();
@@ -95,7 +96,7 @@ export function ReminderFormScreen({ instanceId, reminderId }: { instanceId?: st
           <View style={styles.row}><CommunityText bold style={styles.rowLabel}>时间</CommunityText><TextInput accessibilityLabel="提醒时间（24小时制）" value={time} onChangeText={setTime} placeholder="09:00" maxLength={5} style={styles.timeInput} /></View>
           <Row label="上一次" accessibilityLabel="上一次养护" value={lastChoice ? (existing && !lastChanged ? (existing.lastCareDate ?? lastCareLabels[lastChoice]) : lastCareLabels[lastChoice]) : '选择'} onPress={() => setPicker('last')} />
           {duplicate && <Button label="编辑已有同类提醒" onPress={() => editExisting(duplicate.id)} />}
-          <CommunityText style={styles.hint}>提醒保存在应用内，请在「提醒事项」查看到期计划。</CommunityText>
+          <CommunityText style={styles.hint}>允许系统通知后，Android 将提醒下一次养护；完成后安排下一次。省电或勿扰模式可能影响到达时间。其他平台请在「提醒事项」查看。</CommunityText>
           <CommunityText style={styles.hint}>时间按 {timeZone} 显示。</CommunityText>
           {message && <CommunityText accessibilityRole="alert" style={styles.error}>{message}</CommunityText>}
         </ScrollView>

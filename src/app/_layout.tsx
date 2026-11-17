@@ -4,8 +4,14 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { cleanupPreviewImages } from '@/services/preview-image';
+import { startNotificationLifecycle } from '@/services/notification-lifecycle';
 
 SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
+function NotificationLifecycle() {
+  useEffect(() => startNotificationLifecycle(), []);
+  return null;
+}
 
 export default function RootLayout() {
   const hydrated = useAuthStore((state) => state.hydrated);
@@ -32,6 +38,7 @@ export default function RootLayout() {
     <ThemeProvider value={DefaultTheme}>
       <CommunityFontProvider>
         <Stack screenOptions={{ headerShown: false }} />
+        <NotificationLifecycle />
       </CommunityFontProvider>
     </ThemeProvider>
   );

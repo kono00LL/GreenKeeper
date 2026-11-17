@@ -8,8 +8,14 @@ import { reminderApi } from '@/services/reminder-api';
 import { statusOf } from '@/services/post-errors';
 import { dueStatus, todayInZone } from '@/services/reminder-dates';
 import { careLabels, type Reminder } from '@/types/reminder';
+import { removedReminderNotification, savedReminderNotification } from '@/services/reminder-notification-sync';
+import { NotificationControls } from './notification-controls';
 
 export function RemindersList() {
+  return <View style={styles.list}><NotificationControls /><ReminderItems /></View>;
+}
+
+function ReminderItems() {
   const { data, loading, error, reload } = usePlantResource('reminders', reminderApi.mine);
   const pending = useRef(new Set<string>());
   const [busyIds, setBusyIds] = useState<string[]>([]);
@@ -21,7 +27,11 @@ export function RemindersList() {
     pending.current.add(item.id);
     setBusyIds([...pending.current]);
     setActionError(null);
-    try { await reminderApi[action](item.id); await reload(); }
+    try {
+      if (action === 'complete') await savedReminderNotification(await reminderApi.complete(item.id));
+      else { await reminderApi.remove(item.id); await removedReminderNotification(item.id); }
+      await reload();
+    }
     catch (requestError) {
       if (statusOf(requestError) === 401) login();
       else setActionError('操作失败，请检查网络后重试');

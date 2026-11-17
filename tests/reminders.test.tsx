@@ -6,6 +6,9 @@ import { RemindersList } from '@/components/garden/reminders-list';
 import { reminderApi } from '@/services/reminder-api';
 import { plantApi } from '@/services/plant-api';
 import { addCalendarDays, dueStatus, previewSchedule } from '@/services/reminder-dates';
+import { removedReminderNotification, savedReminderNotification } from '@/services/reminder-notification-sync';
+import { sendTestNotification } from '@/services/reminder-notifications';
+import { Alert } from 'react-native';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => false) },
@@ -13,6 +16,10 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('@/services/reminder-api', () => ({ reminderApi: { mine: jest.fn(), create: jest.fn(), update: jest.fn(), complete: jest.fn(), remove: jest.fn() } }));
 jest.mock('@/services/plant-api', () => ({ plantApi: { mine: jest.fn() } }));
+jest.mock('@/services/reminder-notification-sync', () => ({
+  savedReminderNotification: jest.fn(), removedReminderNotification: jest.fn(), refreshReminderNotifications: jest.fn(),
+}));
+jest.mock('@/services/reminder-notifications', () => ({ sendTestNotification: jest.fn() }));
 const plant = { id: 'fern-1', instanceId: 'instance-1', nameZh: '铁线蕨', customName: '窗边这盆' };
 const reminder = { id: 'reminder-1', instanceId: 'instance-1', plantId: 'fern-1', displayName: '窗边这盆', careType: 'watering', interval: 2, unit: 'days', time: '09:00', timeZone: 'Asia/Taipei', lastCareChoice: 'yesterday', lastCareDate: '2026-11-10', anchorDate: '2026-11-10', nextDueDate: '2026-11-12', createdAt: '', updatedAt: '' };
 beforeEach(() => {
@@ -23,6 +30,8 @@ beforeEach(() => {
   (reminderApi.update as jest.Mock).mockReset().mockResolvedValue(reminder);
   (reminderApi.complete as jest.Mock).mockReset().mockResolvedValue(reminder);
   (reminderApi.remove as jest.Mock).mockReset().mockResolvedValue({ removed: true });
+  (savedReminderNotification as jest.Mock).mockReset().mockResolvedValue('enabled');
+  (sendTestNotification as jest.Mock).mockReset().mockResolvedValue('enabled');
 });
 test('previews calendar dates and preserves overdue days', () => {
   expect(addCalendarDays('2024-02-28', 1)).toBe('2024-02-29');
@@ -44,6 +53,7 @@ test('preselects an instance, selects care history, and prevents duplicate submi
   expect(reminderApi.create).toHaveBeenCalledTimes(1);
   expect(reminderApi.create).toHaveBeenCalledWith(expect.objectContaining({ instanceId: 'instance-1', careType: 'watering', interval: 1, unit: 'days', time: '09:00', lastCareChoice: 'unknown' }));
   await act(async () => finish(reminder));
+  expect(savedReminderNotification).toHaveBeenCalledWith(reminder, true);
   expect(router.replace).toHaveBeenCalledWith('/garden/reminders');
 });
 test('edits time without resubmitting relative care history', async () => {
@@ -78,6 +88,31 @@ test('lists reminders and handles complete, edit and delete', async () => {
   await waitFor(() => expect(reminderApi.mine).toHaveBeenCalledTimes(2));
   fireEvent.press(screen.getByRole('button', { name: '删除提醒：窗边这盆 浇水' }));
   await waitFor(() => expect(reminderApi.remove).toHaveBeenCalledWith('reminder-1'));
+  await waitFor(() => expect(removedReminderNotification).toHaveBeenCalledWith('reminder-1'));
+  expect(savedReminderNotification).toHaveBeenCalledWith(reminder);
+});
+
+test('keeps a saved plan and navigates to the list when notification permission is denied', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  (savedReminderNotification as jest.Mock).mockResolvedValue('denied');
+  render(<ReminderFormScreen instanceId="instance-1" />);
+  await screen.findByText('窗边这盆');
+  fireEvent.press(screen.getByRole('button', { name: '上一次养护' }));
+  fireEvent.press(screen.getByRole('button', { name: '不记得了' }));
+  fireEvent.press(screen.getByRole('button', { name: '开启提醒' }));
+  await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/garden/reminders'));
+  expect(alert).toHaveBeenCalledWith('提醒已保存，系统通知未开启', expect.any(String), expect.any(Array));
+  expect(reminderApi.create).toHaveBeenCalledTimes(1);
+  alert.mockRestore();
+});
+
+test('exposes the test button to guests even when the reminder API requires login', async () => {
+  (reminderApi.mine as jest.Mock).mockRejectedValueOnce({ response: { status: 401 } });
+  render(<RemindersList />);
+  await screen.findByText('登录后管理养护提醒');
+  fireEvent.press(screen.getByRole('button', { name: '发送测试通知' }));
+  expect(await screen.findByText('已发送测试通知，请查看系统通知栏。')).toBeTruthy();
+  expect(reminderApi.create).not.toHaveBeenCalled();
 });
 test('shows no-plants guidance and redirects expired sessions to login', async () => {
   (plantApi.mine as jest.Mock).mockResolvedValueOnce([]);

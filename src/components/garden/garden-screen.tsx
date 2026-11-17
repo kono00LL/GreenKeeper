@@ -9,6 +9,7 @@ import { colors } from '@/constants/color';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { plantApi } from '@/services/plant-api';
 import type { MyPlant } from '@/types/plant';
+import { refreshReminderNotifications, removedInstanceNotifications } from '@/services/reminder-notification-sync';
 
 import { RemindersList } from './reminders-list';
 
@@ -32,6 +33,7 @@ export function GardenScreen() {
     setRemovingInstances((current) => [...current, plant.instanceId]);
     try {
       await plantApi.removeMine(plant.instanceId);
+      await removedInstanceNotifications(plant.instanceId);
       await reload();
     } catch {
       Alert.alert('移除失败', '请检查网络后重试。');
@@ -65,6 +67,7 @@ export function GardenScreen() {
     setSavingName(true);
     try {
       await plantApi.renameMine(renamingPlant.instanceId, normalizedName);
+      await refreshReminderNotifications();
       setRenamingPlant(null);
       await reload();
     } catch {
