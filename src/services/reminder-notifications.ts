@@ -25,7 +25,6 @@ async function permission(native: Native, request: boolean) {
   // Android 13 needs a channel before requesting notification permission.
   await native.setNotificationChannelAsync(CARE_CHANNEL, {
     name: '植物养护提醒', importance: native.AndroidImportance.HIGH,
-    // Omit sound to use Android's default; strings here are custom filenames.
     vibrationPattern: [0, 250, 200, 250],
   });
   let permission = await native.getPermissionsAsync();

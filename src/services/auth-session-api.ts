@@ -1,7 +1,6 @@
 import { refreshClient } from '@/services/http-transport';
 import type { AuthTokens, User, UserResponse } from '@/types/auth';
 
-// Tokens are explicit here: refreshing a session must not import the store's HTTP interceptors.
 export async function getSessionUser(accessToken: string): Promise<User> {
   const response = await refreshClient.get<UserResponse>('/user/userinfo', {
     headers: { Authorization: `Bearer ${accessToken}` },
