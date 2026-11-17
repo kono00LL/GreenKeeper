@@ -36,7 +36,7 @@ test('camera login returns to capture while skipping returns home', async () => 
   (login as jest.Mock).mockResolvedValue({ user: {}, access_token: 'a', refresh_token: 'r' });
   render(<AuthPage />);
   fireEvent.press(screen.getByText('跳过'));
-  expect(router.dismissTo).toHaveBeenCalledWith('/(tabs)');
+  expect(router.dismissTo).toHaveBeenCalledWith('/');
   jest.clearAllMocks();
   fireEvent.press(screen.getByText('密码登录'));
   fireEvent.changeText(screen.getByPlaceholderText('name@example.com'), 'user@example.com');
@@ -104,7 +104,7 @@ test('exchanges a validated WeChat login code and saves the returned session', a
 
   await waitFor(() => expect(loginWithWeChat).toHaveBeenCalledWith('wx-code'));
   expect(WeChat.sendAuthRequest).toHaveBeenCalledWith('snsapi_userinfo', 'state-123');
-  expect(router.replace).toHaveBeenCalledWith('/(tabs)');
+  expect(router.replace).toHaveBeenCalledWith('/');
   if (originalAppId === undefined) delete process.env.EXPO_PUBLIC_WECHAT_APP_ID;
   else process.env.EXPO_PUBLIC_WECHAT_APP_ID = originalAppId;
   Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform });

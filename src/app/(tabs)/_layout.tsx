@@ -8,7 +8,7 @@ const INACTIVE_COLOR = '#99999b';
 const SETTING_ICON = require('@/assets/icons/setting01.svg');
 
 const tabs = [
-  { name: 'index', title: '主页' },
+  { name: '(home)', title: '主页' },
   { name: 'garden', title: '花园' },
   { name: 'camera', title: '拍摄' },
   { name: 'post', title: '社区' },

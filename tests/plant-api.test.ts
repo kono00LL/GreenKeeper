@@ -8,6 +8,14 @@ jest.mock('@/services/http', () => ({
 
 beforeEach(() => jest.clearAllMocks());
 
+test('loads the full catalogue without a category for search', async () => {
+  (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: { items: [
+    { id: 'one', coverImage: { url: '/uploads/fern.webp', altText: '蕨类' } },
+  ] } });
+  expect((await plantApi.list())[0].coverImage?.url).toBe('http://localhost:8080/uploads/fern.webp');
+  expect(apiClient.get).toHaveBeenCalledWith('/plants', undefined);
+});
+
 test('resolves relative cover URLs on lists, preserving missing covers', async () => {
   (apiClient.get as jest.Mock).mockResolvedValueOnce({ data: { items: [
     { id: 'one', coverImage: { url: '/uploads/fern.webp', altText: '蕨类' } },

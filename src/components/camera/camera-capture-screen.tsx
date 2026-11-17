@@ -22,7 +22,7 @@ export function CameraCaptureScreen() {
 
   const close = useCallback(() => {
     if (router.canGoBack()) router.back();
-    else router.replace('/(tabs)');
+    else router.replace('/');
   }, []);
 
   const openPreview = async (uri: string) => {

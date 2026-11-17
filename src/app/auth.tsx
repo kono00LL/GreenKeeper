@@ -22,7 +22,7 @@ export default function AuthPage() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const returnTarget = authReturnTarget(returnTo);
   const leave = () => {
-    if (returnTo === '/camera') router.dismissTo('/(tabs)');
+    if (returnTo === '/camera') router.dismissTo('/');
     else if (returnTarget) router.dismissTo(returnTarget);
     else if (router.canGoBack()) router.back();
     else router.replace('/(tabs)/profile');
@@ -84,7 +84,7 @@ export default function AuthPage() {
   const finishLogin = (response: Awaited<ReturnType<typeof login>>) => {
     setSession(response.user, response.access_token, response.refresh_token);
     if (returnTarget) router.dismissTo(returnTarget);
-    else router.replace('/(tabs)');
+    else router.replace('/');
   };
 
   const handleSubmit = async () => {

@@ -22,7 +22,8 @@ test('hides the tab bar only for the camera screen', () => {
   render(<TabsLayout />);
 
   expect(screen.getByTestId('tab-camera').props.accessibilityHint).toBe('none');
-  expect(screen.getByTestId('tab-index').props.accessibilityHint).toBeUndefined();
+  expect(screen.getByTestId('tab-(home)').props.accessibilityHint).toBeUndefined();
+  expect(screen.getAllByTestId(/^tab-/)).toHaveLength(5);
   expect(screen.getByTestId('tab-garden').props.accessibilityHint).toBeUndefined();
   expect(screen.getByTestId('tab-post').props.accessibilityHint).toBeUndefined();
   expect(screen.getByTestId('tab-profile').props.accessibilityHint).toBeUndefined();

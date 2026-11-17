@@ -49,6 +49,18 @@ test('shows the garden empty state and switches to reminder placeholder', async 
   expect(screen.queryByText('您的花园中没有植物 😔')).toBeNull();
 });
 
+test.each([
+  { plants: [], label: '添加植物' },
+  { plants: [{ ...fern, instanceId: 'instance-1' }], label: '＋  添加植物' },
+])('opens plant search from the garden action $label', async ({ plants, label }) => {
+  (plantApi.mine as jest.Mock).mockResolvedValueOnce(plants);
+  render(<GardenScreen />);
+
+  fireEvent.press(await screen.findByRole('button', { name: label }));
+
+  expect(router.push).toHaveBeenCalledWith('/plants/search');
+});
+
 test('renders a personal plant, opens its detail, and immediately removes its instance from the options menu', async () => {
   (plantApi.mine as jest.Mock).mockResolvedValueOnce([{ ...fern, instanceId: 'instance-1' }]).mockResolvedValueOnce([]);
   const alert = jest.spyOn(Alert, 'alert').mockImplementation((_title, _message, buttons) => {

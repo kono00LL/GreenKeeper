@@ -54,6 +54,14 @@ beforeEach(() => {
   (plantApi.detail as jest.Mock).mockResolvedValue(detail);
 });
 
+test('opens plant search from the home page even when categories fail to load', async () => {
+  (plantApi.categories as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+  render(<PlantHomeScreen />);
+  fireEvent.press(screen.getByRole('button', { name: '搜索植物' }));
+  expect(router.push).toHaveBeenCalledWith('/plants/search');
+  expect(await screen.findByText('植物分类暂时无法加载')).toBeTruthy();
+});
+
 test('shows the first four categories, can expand, and opens a category list', async () => {
   render(<PlantHomeScreen />);
   expect(await screen.findByText('蕨类')).toBeTruthy();

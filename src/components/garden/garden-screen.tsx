@@ -109,13 +109,13 @@ export function GardenScreen() {
           <View style={styles.emptyState}>
             <CommunityText bold style={styles.emptyTitle}>您的花园中没有植物 😔</CommunityText>
             <CommunityText style={styles.emptySubtitle}>点击添加您的第一株植物</CommunityText>
-            <PrimaryAction label="添加植物" onPress={() => router.push({ pathname: '/garden/[feature]', params: { feature: 'add' } })} />
+            <PrimaryAction label="添加植物" onPress={() => router.push('/plants/search')} />
             <SecondaryAction label="✦  最佳适合植物" onPress={() => router.push({ pathname: '/garden/[feature]', params: { feature: 'recommended' } })} />
           </View>
         ) : (
           <View style={styles.plantsContent}>
             {error && <PlantLoadState message="刷新失败，当前显示上次加载的植物" retry={() => void reload()} />}
-            <PrimaryAction label="＋  添加植物" onPress={() => router.push({ pathname: '/garden/[feature]', params: { feature: 'add' } })} />
+            <PrimaryAction label="＋  添加植物" onPress={() => router.push('/plants/search')} />
             <View style={styles.plantsList}>
               {plants.map((plant) => (
                 <View key={plant.instanceId} style={styles.plantCard}>

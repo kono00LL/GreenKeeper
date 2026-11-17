@@ -8,6 +8,7 @@ import { colors } from '@/constants/color';
 import { plantApi } from '@/services/plant-api';
 import { usePlantResource } from '@/hooks/use-plant-resource';
 import { PlantLoadState } from './plant-load-state';
+import { PlantSearchIcon } from './plant-search-icon';
 import type { PlantCategory } from '@/types/plant';
 
 const INITIAL_CATEGORY_COUNT = 4;
@@ -27,6 +28,10 @@ export function PlantHomeScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={[styles.content, { paddingBottom: 80 + insets.bottom }]}
         refreshControl={<RefreshControl refreshing={loading && data !== null} onRefresh={() => void reload()} tintColor={colors.selectedText} colors={[colors.selectedText]} />}>
+        <Pressable accessibilityRole="button" accessibilityLabel="搜索植物" onPress={() => router.push('/plants/search')} style={({ pressed }) => [styles.search, pressed && styles.pressed]}>
+          <PlantSearchIcon />
+          <CommunityText style={styles.searchHint}>搜索植物</CommunityText>
+        </Pressable>
         <CommunityText bold style={styles.title}>分类总览</CommunityText>
         {loading && categories.length === 0 ? (
           <PlantLoadState loading message="正在加载植物分类…" />
@@ -106,6 +111,8 @@ const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.white, flex: 1 },
   content: { alignSelf: 'center', backgroundColor: colors.white, maxWidth: 880, paddingHorizontal: 16, paddingTop: 18, width: '100%' },
   title: { color: colors.text, fontSize: 23, marginBottom: 16 },
+  search: { alignItems: 'center', backgroundColor: '#f0f1f0', borderRadius: 10, flexDirection: 'row', gap: 10, marginBottom: 22, minHeight: 46, paddingHorizontal: 14 },
+  searchHint: { color: colors.muted, fontSize: 15 },
   grid: { gap: 12 },
   gridRow: { flexDirection: 'row', gap: 12 },
   emptyCard: { flex: 1 },
